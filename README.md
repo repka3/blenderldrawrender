@@ -2,14 +2,41 @@
 
 The [original repo from trevorsandy](https://github.com/trevorsandy/blenderldrawrender) is abandoned
 from 18 July 2020. This addons seems promising but it doesnt install on Blender 2.92+ (I'm using 3.2).
-I want to try to use this addon to create Syntethic data for Machine Learning. It should have everything needed
+I want to try to use this addon to create Syntethic data for Machine Learning training. It should have everything needed
 but without a single HOW-TO, I need to "reverse engineer" the code and figure it out. Will write the How-to and
 example Blender script once I understand how to actually do it.
 
+<br />
+<br />
+
+# HOW-TO Install on Blender 2.92+ (tested on 3.2)
+
+The process is quite simple:
+
+1. <b>Download the latest release</b> (or git clone and use the script "create_local_package_ready_for_blender.sh")(but dont forget the file background.exr, git for some reason doesn't allow the push, can be found on the release)
+2. <b>Open Blender, go to Edit->Preferences->Add-ons.</b>  Click install in the top right and locate the zip file with the lastest release. Select the file and click Install Add-ons.
+3. <b> Open a terminal and navigate (cd) to the Blender addons directory.</b> This depends on the OS and user settings. In my case, on windows 10, it is: C:\Users\Username\AppData\Roaming\Blender Foundation\Blender\3.2\scripts\addons
+4. <b>Here you should see a file called installBlenderAddons.py</b> and to be completly safe, just check you have a file called ldraw_render_addons.zip inside the addons subdir. (addons/addons/)
+5. <b>Launch the script using Blender engine.</b> This depends again on SO. The basic idea is the same launch blender passing this script as argument. In windows 10 in my case it was: C:\Users\Alessio\AppData\Roaming\Blender Foundation\Blender\3.2\scripts\addons><b> & 'C:\Program Files\Blender Foundation\Blender 3.2\blender.exe' --background --python .\installBlenderAddons.py</b> (offcourse you need python and pip installed on your system.)
+6. <b> Congratulations, you did it!</b> You should see the message INFO: LDraw Addons installed. Blender quit
+
+At this point you can open Blender, check in menu File->Import and see, you should have as first (probably) option the LPUB3D Import LDraw where you need to set your ldraw directory and to save it, try to import an ldraw part. Everything should be fine. You also will have a new option under menu Render->LPUB3D Render LDraw.
+
+
 ## TODO:
 
--Guide on HOW-TO install  
+<s>-Guide on HOW-TO install</s>  
 -Working example on how to script Blender for actually use this addons.
+
+<br />
+<br />
+
+
+### Original ReadME from the original author.
+
+<hr>
+
+<br />
 
 ## LPub3D Render LDraw Models with Blender
 

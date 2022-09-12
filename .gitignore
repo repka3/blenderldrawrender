@@ -5,7 +5,6 @@ __pycache__/
 
 # C extensions
 *.so
-
 # Distribution / packaging
 .Python
 build/
@@ -127,7 +126,7 @@ dmypy.json
 addons/io_scene_lpub3d_importldraw/loadldraw/background.exr
 
 # Package and upload releases
-LDrawBlenderRenderAddons.zip
+LDrawBlenderImportRenderAdd.zip
 
 # PyCharm workspace
 .idea/

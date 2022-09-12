@@ -152,7 +152,7 @@ def install_addons():
             break
 
     # Set LDraw directory in default preference file
-    addons_path = bpy.utils.user_resource('SCRIPTS', "addons")
+    addons_path = bpy.utils.user_resource('SCRIPTS', path="addons")
     pref_file = os.path.join(
         addons_path, "io_scene_lpub3d_importldraw/ImportLDrawPreferences.ini")
     prefs = Preferences(pref_file.replace("/", os.path.sep))
