@@ -19,8 +19,9 @@ The process is quite simple:
 4. <b>Here you should see a file called installBlenderAddons.py</b> and to be completly safe, just check you have a file called ldraw_render_addons.zip inside the addons subdir. (addons/addons/)
 5. <b>Launch the script using Blender engine.</b> This depends again on SO. The basic idea is the same launch blender passing this script as argument. In windows 10 in my case it was: C:\Users\Alessio\AppData\Roaming\Blender Foundation\Blender\3.2\scripts\addons><b> & 'C:\Program Files\Blender Foundation\Blender 3.2\blender.exe' --background --python .\installBlenderAddons.py</b> (offcourse you need python and pip installed on your system.)
 6. <b> Congratulations, you did it!</b> You should see the message INFO: LDraw Addons installed. Blender quit
+7.<b>Now open Blender, go back in Edit->Preferences->Add-ons, search for ldraw and activate (✔️) the 2 new add-ons (importer and renderer)</b>
 
-At this point you can open Blender, check in menu File->Import and see, you should have as first (probably) option the LPUB3D Import LDraw where you need to set your ldraw directory and to save it, try to import an ldraw part. Everything should be fine. You also will have a new option under menu Render->LPUB3D Render LDraw.
+At this point you can check in menu File->Import and see, you should have as first (probably) option the LPUB3D Import LDraw where you need to set your ldraw directory and to save it, try to import an ldraw part. Everything should be fine. You also will have a new option under menu Render->LPUB3D Render LDraw.
 
 
 ## TODO:
