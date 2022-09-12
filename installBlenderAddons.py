@@ -44,12 +44,13 @@ from typing import Union, Set
 class Preferences():
     """Import LDraw - Preferences"""
 
-    __sectionName   = 'importldraw'
+    __sectionName = 'importldraw'
 
     def __init__(self, preferencesfile):
         if preferencesfile.__ne__(""):
             self.__prefsFilepath = preferencesfile
-            print("INFO: Preferences file:    {0}".format(self.__prefsFilepath))
+            print("INFO: Preferences file:    {0}".format(
+                self.__prefsFilepath))
 
         self.__config = configparser.RawConfigParser()
         self.__prefsRead = self.__config.read(self.__prefsFilepath)
@@ -80,14 +81,20 @@ def installPackage(package):
     if package_spec is not None:
         print("INFO: Installing {0}...".format(package))
         import pip
-        pybin = bpy.app.binary_path_python
-        subprocess.check_call([pybin, '-m', 'pip', 'install', '--user', '--no-deps', package])
+        from pathlib import Path
+        import sys
+        # pybin = bpy.app.binary_path_python blender 2.92 removed the bpy.app.binary_path_python
+        pybin = Path(sys.executable)
+        subprocess.check_call(
+            [pybin, '-m', 'pip', 'install', '--user', '--no-deps', package])
     else:
-        print("WARNING: Could not install {0} - pip module is not installed.".format(package))
+        print(
+            "WARNING: Could not install {0} - pip module is not installed.".format(package))
+
 
 def install_addons():
     """Install LDraw Render addons"""
-    
+
     # Confirm minimum Blender version
     is_blender_28_or_later = bpy.app.version >= (2, 80, 0)
     if not is_blender_28_or_later:
@@ -100,7 +107,8 @@ def install_addons():
     path_to_script_dir = os.getcwd()
 
     # Define path to LPub3D Import LDraw add-on bundle
-    path_to_addon_dir: Union[bytes, str] = os.path.join(path_to_script_dir, "addons")
+    path_to_addon_dir: Union[bytes, str] = os.path.join(
+        path_to_script_dir, "addons")
 
     # Define a list of the files in this add-on folder.
     file_list = sorted(os.listdir(path_to_addon_dir))
@@ -119,7 +127,8 @@ def install_addons():
                                      filepath=path_to_file, filter_python=True, filter_glob='*.py;*.zip')
 
     # Specify which add-ons to enable.
-    enable_these_addons: Set[str] = {'io_scene_lpub3d_importldraw', 'io_scene_lpub3d_renderldraw'}
+    enable_these_addons: Set[str] = {
+        'io_scene_lpub3d_importldraw', 'io_scene_lpub3d_renderldraw'}
 
     # Enable addons.
     for string in enable_these_addons:
@@ -144,7 +153,8 @@ def install_addons():
 
     # Set LDraw directory in default preference file
     addons_path = bpy.utils.user_resource('SCRIPTS', "addons")
-    pref_file = os.path.join(addons_path, "io_scene_lpub3d_importldraw/ImportLDrawPreferences.ini")
+    pref_file = os.path.join(
+        addons_path, "io_scene_lpub3d_importldraw/ImportLDrawPreferences.ini")
     prefs = Preferences(pref_file.replace("/", os.path.sep))
     ldraw_path = os.environ.get('LDRAW_DIRECTORY')
     if ldraw_path.__ne__(""):
@@ -152,12 +162,18 @@ def install_addons():
         prefs.save()
 
     # Export paths
-    environment_file   = os.path.join(addons_path, "io_scene_lpub3d_importldraw/loadldraw/background.exr")
-    lsynth_directory   = os.path.join(addons_path, "io_scene_lpub3d_importldraw/lsynth")
-    studlogo_directory = os.path.join(addons_path, "io_scene_lpub3d_importldraw/studs")
-    print("DATA: ENVIRONMENT_FILE: {0}".format(environment_file.replace("/", os.path.sep)))
-    print("DATA: LSYNTH_DIRECTORY: {0}".format(lsynth_directory).replace("/", os.path.sep))
-    print("DATA: STUDLOGO_DIRECTORY: {0}".format(studlogo_directory).replace("/", os.path.sep))
+    environment_file = os.path.join(
+        addons_path, "io_scene_lpub3d_importldraw/loadldraw/background.exr")
+    lsynth_directory = os.path.join(
+        addons_path, "io_scene_lpub3d_importldraw/lsynth")
+    studlogo_directory = os.path.join(
+        addons_path, "io_scene_lpub3d_importldraw/studs")
+    print("DATA: ENVIRONMENT_FILE: {0}".format(
+        environment_file.replace("/", os.path.sep)))
+    print("DATA: LSYNTH_DIRECTORY: {0}".format(
+        lsynth_directory).replace("/", os.path.sep))
+    print("DATA: STUDLOGO_DIRECTORY: {0}".format(
+        studlogo_directory).replace("/", os.path.sep))
 
     print("INFO: LDraw Addons installed.")
 

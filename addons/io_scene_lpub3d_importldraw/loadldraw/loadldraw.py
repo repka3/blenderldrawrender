@@ -16,6 +16,24 @@ along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 """
+from pprint import pprint
+from zipfile import ZipFile
+import operator
+import itertools
+import platform
+import time
+import copy
+import bmesh
+import re
+import struct
+import datetime
+import bpy
+import glob
+import traceback
+import mathutils
+import math
+import sys
+import os
 from typing import Dict, Any
 
 """
@@ -29,25 +47,6 @@ Accepts .mpd, .ldr, .l3b, and .dat files.
 
 Adapted from Import LDraw by Toby Nelson - tobymnelson@gmail.com
 """
-
-import os
-import sys
-import math
-import mathutils
-import traceback
-import glob
-import bpy
-import datetime
-import struct
-import re
-import bmesh
-import copy
-import time
-import platform
-import itertools
-import operator
-from zipfile import ZipFile
-from pprint import pprint
 
 
 # **************************************************************************************
@@ -100,7 +99,8 @@ def printError(message):
 def matmul(a, b):
     """Perform matrix multiplication in a blender 2.7 and 2.8 safe way"""
     if isBlender28OrLater:
-        return operator.matmul(a, b)  # the same as writing a @ b, but parses ok in 2.7
+        # the same as writing a @ b, but parses ok in 2.7
+        return operator.matmul(a, b)
     else:
         return a * b
 
@@ -109,7 +109,8 @@ def matmul(a, b):
 def matvecmul(a, b):
     """Perform matrix multiplication in a blender 2.7 and 2.8 safe way"""
     if isBlender28OrLater:
-        return operator.matmul(a, b)  # the same as writing a @ b, but parses ok in 2.7
+        # the same as writing a @ b, but parses ok in 2.7
+        return operator.matmul(a, b)
     else:
         return a * b
 
@@ -167,9 +168,11 @@ def deselectObject(ob):
 # **************************************************************************************
 def addPlane(location, size):
     if isBlender28OrLater:
-        bpy.ops.mesh.primitive_plane_add(size=size, enter_editmode=False, location=location)
+        bpy.ops.mesh.primitive_plane_add(
+            size=size, enter_editmode=False, location=location)
     else:
-        bpy.ops.mesh.primitive_plane_add(radius=size, view_align=False, enter_editmode=False, location=location)
+        bpy.ops.mesh.primitive_plane_add(
+            radius=size, view_align=False, enter_editmode=False, location=location)
 
 
 # **************************************************************************************
@@ -247,11 +250,12 @@ def formatElapsed(interval, long_form=False, seconds_places=3):
             places=(0, seconds_places)[unitindex == 0]
         )
         result = (
-                place
-                +
-                ("", (" ", (", ", " and ")[unitindex == 1])[long_form])[unitindex > 0]
-                +
-                result
+            place
+            +
+            ("", (" ", (", ", " and ")[unitindex == 1])[
+             long_form])[unitindex > 0]
+            +
+            result
         )
         if factor is None:
             break
@@ -269,64 +273,90 @@ class Options:
     """User Options"""
 
     # Full filepath to ldraw folder. If empty, some standard locations are attempted
-    ldrawDirectory     = r""            # Full filepath to the ldraw parts library (searches some standard locations if left blank)
-    instructionsLook   = False          # Set up scene to look like Lego Instruction booklets
-    scale              = 0.01           # Size of the lego model to create. (0.04 is LeoCAD scale)
-    useUnofficialParts = True           # Additionally searches <ldraw-dir>/unofficial/parts and /p for files
-    resolution         = "Standard"     # Choose from "High", "Standard", or "Low"
-    defaultColour      = "4"            # Default colour ("4" = red)
-    createInstances    = True           # Multiple bricks share geometry (recommended)
-    useColourScheme    = "lgeo"         # "ldraw", "alt", or "lgeo". LGEO gives the most true-to-life colours.
-    numberNodes        = True           # Each node's name has a numerical prefix eg. 00001_car.dat (keeps nodes listed in a fixed order)
-    removeDoubles      = True           # Remove duplicate vertices (recommended)
-    smoothShading      = True           # Smooth the surface normals (recommended)
-    edgeSplit          = True           # Edge split modifier (recommended if you use smoothShading)
-    gaps               = True           # Introduces a tiny space between each brick
-    gapWidth           = 0.01           # Width of gap between bricks (in Blender units)
-    curvedWalls        = True           # Manipulate normals to make surfaces look slightly concave
-    addSubsurface      = True           # Adds subsurface to principled shader
-    importCameras      = True           # LeoCAD can specify cameras within the ldraw file format. Choose to load them or ignore them.
-    importLights       = True           # LPub3D can specify lights within the ldraw file format. Choose to load them or ignore them
-    positionObjectOnGroundAtOrigin = True   # Centre the object at the origin, sitting on the z=0 plane
-    flattenHierarchy   = False          # All parts are under the root object - no sub-models
-    flattenGroups      = False          # All LeoCAD groups are ignored - no groups
+    # Full filepath to the ldraw parts library (searches some standard locations if left blank)
+    ldrawDirectory = r""
+    # Set up scene to look like Lego Instruction booklets
+    instructionsLook = False
+    # Size of the lego model to create. (0.04 is LeoCAD scale)
+    scale = 0.01
+    # Additionally searches <ldraw-dir>/unofficial/parts and /p for files
+    useUnofficialParts = True
+    resolution = "Standard"     # Choose from "High", "Standard", or "Low"
+    defaultColour = "4"            # Default colour ("4" = red)
+    # Multiple bricks share geometry (recommended)
+    createInstances = True
+    # "ldraw", "alt", or "lgeo". LGEO gives the most true-to-life colours.
+    useColourScheme = "lgeo"
+    # Each node's name has a numerical prefix eg. 00001_car.dat (keeps nodes listed in a fixed order)
+    numberNodes = True
+    removeDoubles = True           # Remove duplicate vertices (recommended)
+    smoothShading = True           # Smooth the surface normals (recommended)
+    # Edge split modifier (recommended if you use smoothShading)
+    edgeSplit = True
+    gaps = True           # Introduces a tiny space between each brick
+    gapWidth = 0.01           # Width of gap between bricks (in Blender units)
+    curvedWalls = True           # Manipulate normals to make surfaces look slightly concave
+    addSubsurface = True           # Adds subsurface to principled shader
+    # LeoCAD can specify cameras within the ldraw file format. Choose to load them or ignore them.
+    importCameras = True
+    # LPub3D can specify lights within the ldraw file format. Choose to load them or ignore them
+    importLights = True
+    # Centre the object at the origin, sitting on the z=0 plane
+    positionObjectOnGroundAtOrigin = True
+    # All parts are under the root object - no sub-models
+    flattenHierarchy = False
+    flattenGroups = False          # All LeoCAD groups are ignored - no groups
     usePrincipledShaderWhenAvailable = True  # Use the new principled shader
-    searchAdditionalPaths = False       # Search additional LDraw paths (automatically set for fade previous steps and highlight step)
+    # Search additional LDraw paths (automatically set for fade previous steps and highlight step)
+    searchAdditionalPaths = False
     # We have the option of including the 'LEGO' logo on each stud
-    useLogoStuds       = False          # Use the studs with the 'LEGO' logo on them
-    logoStudVersion    = "4"            # Which version of the logo to use ("3" (flat), "4" (rounded) or "5" (subtle rounded))
-    instanceStuds      = False          # Each stud is a new Blender object (slow)
+    useLogoStuds = False          # Use the studs with the 'LEGO' logo on them
+    # Which version of the logo to use ("3" (flat), "4" (rounded) or "5" (subtle rounded))
+    logoStudVersion = "4"
+    instanceStuds = False          # Each stud is a new Blender object (slow)
     # LSynth (http://www.holly-wood.it/lsynth/tutorial-en.html) is a collection of parts used to render string, hoses, cables etc
-    useLSynthParts     = True           # LSynth is used to render string, hoses etc.
+    # LSynth is used to render string, hoses etc.
+    useLSynthParts = True
 
-    additionalSearchDirectories = r""   # Full directory paths, comma delimited, to additional LDraw search paths.
-    customLDConfigFile = r""            # Full directory path to specified custom LDraw colours (LDConfig) file.
-    parameterFile      = r""            # Full file path to file containing slope brick angels, lgeo colours and lighted bricks colours
+    # Full directory paths, comma delimited, to additional LDraw search paths.
+    additionalSearchDirectories = r""
+    # Full directory path to specified custom LDraw colours (LDConfig) file.
+    customLDConfigFile = r""
+    # Full file path to file containing slope brick angels, lgeo colours and lighted bricks colours
+    parameterFile = r""
     # Full file path to .exr environment texture file - specify if not using default bundled in addon
-    environmentFile    = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'background.exr')
+    environmentFile = os.path.join(os.path.dirname(
+        os.path.realpath(__file__)), 'background.exr')
     # Full path to the lsynth parts (Defaults to <ldrawdir>/unofficial/lsynth if left blank)
-    LSynthDirectory    = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../lsynth'))
+    LSynthDirectory = os.path.abspath(os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), '../lsynth'))
     # Optional full path to the stud logo parts (if not found in unofficial directory)
-    studLogoDirectory  = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../studs'))
+    studLogoDirectory = os.path.abspath(os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), '../studs'))
 
     # Ambiguous Normals
     # Older LDraw parts (parts not yet BFC certified) have ambiguous normals.
     # We resolve this by creating double sided faces ("double") or by taking a best guess ("guess")
     resolveAmbiguousNormals = "guess"   # How to resolve ambiguous normals
 
-    overwriteExistingMaterials = True   # If there's an existing material with the same name, do we overwrite it, or use it?
-    overwriteExistingMeshes = True      # If there's an existing mesh with the same name, do we overwrite it, or use it?
-    verbose            = 1              # 1 = Show messages while working, 0 = Only show warnings/errors
+    # If there's an existing material with the same name, do we overwrite it, or use it?
+    overwriteExistingMaterials = True
+    # If there's an existing mesh with the same name, do we overwrite it, or use it?
+    overwriteExistingMeshes = True
+    verbose = 1              # 1 = Show messages while working, 0 = Only show warnings/errors
 
-    addBevelModifier   = True           # Adds a bevel modifier to each part (for rounded edges)
-    bevelWidth         = 0.5            # Width of bevel
+    # Adds a bevel modifier to each part (for rounded edges)
+    addBevelModifier = True
+    bevelWidth = 0.5            # Width of bevel
 
     addWorldEnvironmentTexture = True   # Add an environment texture
-    addGroundPlane     = True           # Add a ground plane
-    setRenderSettings  = True           # Set render percentage, denoising
+    addGroundPlane = True           # Add a ground plane
+    setRenderSettings = True           # Set render percentage, denoising
     removeDefaultObjects = True         # Remove cube and lamp
-    positionCamera     = True           # Position the camera where so we get the whole object in shot
-    cameraBorderPercent = 0.05          # Add a border gap around the positioned object (0.05 = 5%) for the rendered image
+    # Position the camera where so we get the whole object in shot
+    positionCamera = True
+    # Add a border gap around the positioned object (0.05 = 5%) for the rendered image
+    cameraBorderPercent = 0.05
 
     def meshOptionsString():
         """These options change the mesh, so if they change, a new mesh needs to be cached"""
@@ -364,7 +394,7 @@ class Options:
 globalBrickCount = 0
 globalObjectsToAdd = []         # Blender objects to add to the scene
 globalCamerasToAdd = []         # Camera data to add to the scene
-globalLightsToAdd  = []         # Light data to add to the scene
+globalLightsToAdd = []         # Light data to add to the scene
 globalContext = None
 globalWeldDistance = 0.0005
 globalPoints = []
@@ -378,11 +408,13 @@ isBlender28OrLater = None
 hasCollections = None
 
 usingArchiveLibraries = False
-ldrawModelLoaded      = False
-ldrawModelFile        = ""
+ldrawModelLoaded = False
+ldrawModelFile = ""
 
 # **************************************************************************************
 # **************************************************************************************
+
+
 class Math:
     identityMatrix = mathutils.Matrix((
         (1.0, 0.0, 0.0, 0.0),
@@ -404,10 +436,10 @@ class Math:
     def __init__(self):
         # Rotation and scale matrices that convert LDraw coordinate space to Blender coordinate space
         Math.scaleMatrix = mathutils.Matrix((
-                (Options.scale, 0.0,            0.0,            0.0),
-                (0.0,           Options.scale,  0.0,            0.0),
-                (0.0,           0.0,            Options.scale,  0.0),
-                (0.0,           0.0,            0.0,            1.0)
+            (Options.scale, 0.0,            0.0,            0.0),
+            (0.0,           Options.scale,  0.0,            0.0),
+            (0.0,           0.0,            Options.scale,  0.0),
+            (0.0,           0.0,            0.0,            1.0)
         ))
 
 
@@ -457,13 +489,17 @@ class Configure:
         # Search unofficial parts
         if Options.useUnofficialParts:
             parts = "parts" if usingArchiveLibraries else \
-                os.path.join(Configure.ldrawInstallDirectory, "unofficial", "parts")
+                os.path.join(Configure.ldrawInstallDirectory,
+                             "unofficial", "parts")
             primitives = "p" if usingArchiveLibraries else \
-                os.path.join(Configure.ldrawInstallDirectory, "unofficial", "p")
+                os.path.join(Configure.ldrawInstallDirectory,
+                             "unofficial", "p")
             primitivesHigh = "p/48" if usingArchiveLibraries else \
-                os.path.join(Configure.ldrawInstallDirectory, "unofficial", "p", "48")
+                os.path.join(Configure.ldrawInstallDirectory,
+                             "unofficial", "p", "48")
             primitivesLow = "p/8" if usingArchiveLibraries else \
-                os.path.join(Configure.ldrawInstallDirectory, "unofficial", "p", "8")
+                os.path.join(Configure.ldrawInstallDirectory,
+                             "unofficial", "p", "8")
             Configure.__appendPath(parts)
             if Options.resolution == "High":
                 Configure.__appendPath(primitivesHigh)
@@ -473,7 +509,8 @@ class Configure:
 
         # Search for parts in the 'models' folder when archive library not specified
         if not usingArchiveLibraries:
-            Configure.__appendPath(os.path.join(Configure.ldrawInstallDirectory, "models"))
+            Configure.__appendPath(os.path.join(
+                Configure.ldrawInstallDirectory, "models"))
 
         # Search LSynth parts
         if Options.useLSynthParts:
@@ -481,24 +518,28 @@ class Configure:
                 Configure.__appendPath(Options.LSynthDirectory)
             else:
                 parts = "parts" if usingArchiveLibraries else \
-                    os.path.join(Configure.ldrawInstallDirectory, "unofficial", "lsynth")
+                    os.path.join(Configure.ldrawInstallDirectory,
+                                 "unofficial", "lsynth")
                 Configure.__appendPath(parts)
             debugPrint("Use LSynth Parts requested")
 
         # Search for stud logo parts
         if Options.useLogoStuds and Options.studLogoDirectory != "":
             if Options.resolution == "Low":
-                Configure.__appendPath(os.path.join(Options.studLogoDirectory, "8"))
+                Configure.__appendPath(os.path.join(
+                    Options.studLogoDirectory, "8"))
             Configure.__appendPath(Options.studLogoDirectory)
 
         # Search additional search paths
         if Options.additionalSearchDirectories != "" and Options.searchAdditionalPaths:
-            dirs = Options.additionalSearchDirectories.replace("\\\\", "\\").strip().split(",")
+            dirs = Options.additionalSearchDirectories.replace(
+                "\\\\", "\\").strip().split(",")
             for dir in dirs:
                 dir = os.path.expanduser(dir.strip("\"").strip("'"))
                 if dir.lower() not in {path.lower() for path in Configure.searchPaths} and os.path.exists(dir):
                     Configure.__appendPath(dir)
-                    debugPrint("Additional LDraw path to be used is: {0}".format(dir))
+                    debugPrint(
+                        "Additional LDraw path to be used is: {0}".format(dir))
 
     def hasArchiveLibraries(path):
         import fnmatch
@@ -513,7 +554,8 @@ class Configure:
                         CachedLibraries.setOfficialCache(library)
                         Configure.hasOfficialLibrary = True
                         Configure.loadedLibraries.append(libraryName)
-                        debugPrint("Official archive library to be used is: {0}".format(libraryPath))
+                        debugPrint(
+                            "Official archive library to be used is: {0}".format(libraryPath))
                     else:
                         if Options.useUnofficialParts:
                             try:
@@ -525,12 +567,16 @@ class Configure:
                             else:
                                 if unofficialLibrary:
                                     if CachedLibraries.isInitialUpdate:
-                                        CachedLibraries.setUnofficialCache(library)
+                                        CachedLibraries.setUnofficialCache(
+                                            library)
                                     else:
-                                        CachedLibraries.updateUnofficialCache(library)
+                                        CachedLibraries.updateUnofficialCache(
+                                            library)
                                     Configure.hasUnofficialLibrary = True
-                                    Configure.loadedLibraries.append(libraryName)
-                                    debugPrint("Unofficial archive library to be used is: {0}".format(libraryPath))
+                                    Configure.loadedLibraries.append(
+                                        libraryName)
+                                    debugPrint(
+                                        "Unofficial archive library to be used is: {0}".format(libraryPath))
 
         result = Configure.hasOfficialLibrary or Configure.hasUnofficialLibrary
         if not result:
@@ -591,10 +637,12 @@ class Configure:
 
     def __setLDrawParameterFile():
         parameterFilePath = Options.parameterFile if Options.parameterFile != "" else \
-            os.path.join(os.path.dirname(__file__), "BlenderLDrawParameters.lst")
+            os.path.join(os.path.dirname(__file__),
+                         "BlenderLDrawParameters.lst")
         if os.path.exists(parameterFilePath):
             Configure.parameterFile = parameterFilePath.replace("\\\\", "\\")
-            debugPrint("The LDraw parameter file to be used is: {0}".format(Configure.parameterFile))
+            debugPrint("The LDraw parameter file to be used is: {0}".format(
+                Configure.parameterFile))
         else:
             Configure.parameterFile = ""
 
@@ -603,11 +651,14 @@ class Configure:
             Configure.ldrawInstallDirectory = Configure.findDefaultLDrawDirectory()
         else:
             global usingArchiveLibraries
-            usingArchiveLibraries = Configure.hasArchiveLibraries(Options.ldrawDirectory.replace("\\\\", "\\"))
+            usingArchiveLibraries = Configure.hasArchiveLibraries(
+                Options.ldrawDirectory.replace("\\\\", "\\"))
             if not usingArchiveLibraries:
-                Configure.ldrawInstallDirectory = os.path.expanduser(Options.ldrawDirectory.replace("\\\\", "\\"))
+                Configure.ldrawInstallDirectory = os.path.expanduser(
+                    Options.ldrawDirectory.replace("\\\\", "\\"))
         if not usingArchiveLibraries:
-            debugPrint("The LDraw parts library path to be used is: {0}".format(Configure.ldrawInstallDirectory))
+            debugPrint("The LDraw parts library path to be used is: {0}".format(
+                Configure.ldrawInstallDirectory))
         Configure.__setLDrawParameterFile()
         Configure.__setSearchPaths()
 
@@ -644,7 +695,8 @@ class Parameters():
 
         for l in f:
             line = l.rstrip()
-            if line and line[:1] is not "#":
+            # changed cause using literal with 'is not' is syntax warning.
+            if line and line[:1] != "#":
                 yield line  # .split('#')[0].rstrip()
 
     @staticmethod
@@ -686,12 +738,14 @@ class Parameters():
                         if Parameters.validValue(lineSplit[1]):
                             code = int(lineSplit[1])
                         else:
-                            printError("Colour code must be an integer: {0}.".format(lineSplit[1]))
+                            printError(
+                                "Colour code must be an integer: {0}.".format(lineSplit[1]))
 
                         if Parameters.validValue((lineSplit[2:])):
                             colour = tuple(map(int, lineSplit[2:]))
                         else:
-                            printError("Colour tuple must be integers: {0}".format(lineSplit[2:]))
+                            printError(
+                                "Colour tuple must be integers: {0}".format(lineSplit[2:]))
 
                         if len(colour):
                             globalLgeoColours[code] = colour
@@ -703,25 +757,30 @@ class Parameters():
                     if item == "sloped_brick":
                         partid = lineSplit[1]
                         slopeRange1 = (lineSplit[2].split("|"))
-                        if Parameters.validValue(slopeRange1):      # 1st range check
+                        # 1st range check
+                        if Parameters.validValue(slopeRange1):
                             if len(slopeRange1) > 1:
                                 slopeRange1 = tuple(map(int, slopeRange1))
                             else:
                                 slopeRange1 = int(slopeRange1[0])
                         else:
-                            printError("Slope value(s) must be integers: {0}".format(slopeRange1))
+                            printError(
+                                "Slope value(s) must be integers: {0}".format(slopeRange1))
 
                         if len(lineSplit) > 3:
                             slopeRange2 = (lineSplit[3].split("|"))
-                            if Parameters.validValue(slopeRange2):  # 2nd range check
+                            # 2nd range check
+                            if Parameters.validValue(slopeRange2):
                                 if len(slopeRange2) > 1:
                                     slopeRange2 = tuple(map(int, slopeRange2))
                                 else:
                                     slopeRange2 = int(slopeRange2[0])
                             else:
-                                printError("Slope value(s) must be integers: {0}".format(slopeRange2))
+                                printError(
+                                    "Slope value(s) must be integers: {0}".format(slopeRange2))
 
-                            globalSlopeBricks[partid] = {slopeRange1, slopeRange2}
+                            globalSlopeBricks[partid] = {
+                                slopeRange1, slopeRange2}
                         else:
                             globalSlopeBricks[partid] = {slopeRange1}
 
@@ -743,7 +802,8 @@ class Parameters():
             # Create a regular dictionary of parts with ranges of angles to check
             for part in globalSlopeBricks:
                 globalSlopeAngles[part] = {
-                    (c - margin, c + margin) if type(c) is not tuple else (min(c) - margin, max(c) + margin)
+                    (c - margin, c + margin) if type(c) is not tuple else (min(c) -
+                                                                           margin, max(c) + margin)
                     for c in globalSlopeBricks[part]
                 }
             debugPrint("Loading light brick colours from parameter list")
@@ -850,7 +910,8 @@ class Parameters():
             # Create a regular dictionary of parts with ranges of angles to check
             for part in globalSlopeBricks:
                 globalSlopeAngles[part] = {
-                    (c - margin, c + margin) if type(c) is not tuple else (min(c) - margin, max(c) + margin)
+                    (c - margin, c + margin) if type(c) is not tuple else (min(c) -
+                                                                           margin, max(c) + margin)
                     for c in globalSlopeBricks[part]
                 }
 
@@ -977,19 +1038,23 @@ class LegoColours:
                     else "LDConfig.ldr"
 
             if usingArchiveLibraries and Configure.hasOfficialLibrary:
-                sio = CachedLibraries.getCached(configFilename, library=CachedLibraries.officialLibrary)
+                sio = CachedLibraries.getCached(
+                    configFilename, library=CachedLibraries.officialLibrary)
                 if sio is not None:
                     ldconfig_lines = sio.splitlines()
                 else:
-                    printError("LDraw colour file {0} was not found".format(configFilename))
+                    printError(
+                        "LDraw colour file {0} was not found".format(configFilename))
             else:
-                configFilepath = os.path.join(Configure.ldrawInstallDirectory, configFilename)
+                configFilepath = os.path.join(
+                    Configure.ldrawInstallDirectory, configFilename)
                 if os.path.exists(configFilepath):
                     with open(configFilepath, "rt", encoding="utf_8") as ldconfig:
                         ldconfig_lines = ldconfig.readlines()
 
         if not len(ldconfig_lines):
-            printError("LDraw colours (LDConfig) for scheme {0} was not found.".format(Options.useColourScheme))
+            printError("LDraw colours (LDConfig) for scheme {0} was not found.".format(
+                Options.useColourScheme))
             return None
 
         for line in ldconfig_lines:
@@ -999,7 +1064,8 @@ class LegoColours:
 
                     name = line_split[2]
                     code = int(line_split[4])
-                    linearRGBA = LegoColours.hexDigitsToLinearRGBA(line_split[6][1:], 1.0)
+                    linearRGBA = LegoColours.hexDigitsToLinearRGBA(
+                        line_split[6][1:], 1.0)
 
                     colour = {
                         "name": name,
@@ -1010,10 +1076,12 @@ class LegoColours:
                     }
 
                     if "ALPHA" in line_split:
-                        colour["alpha"] = int(LegoColours.__getValue(line_split, "ALPHA")) / 256.0
+                        colour["alpha"] = int(LegoColours.__getValue(
+                            line_split, "ALPHA")) / 256.0
 
                     if "LUMINANCE" in line_split:
-                        colour["luminance"] = int(LegoColours.__getValue(line_split, "LUMINANCE"))
+                        colour["luminance"] = int(
+                            LegoColours.__getValue(line_split, "LUMINANCE"))
 
                     if "CHROME" in line_split:
                         colour["material"] = "CHROME"
@@ -1030,14 +1098,22 @@ class LegoColours:
                     if "MATERIAL" in line_split:
                         subline = line_split[line_split.index("MATERIAL"):]
 
-                        colour["material"]         = LegoColours.__getValue(subline, "MATERIAL")
-                        hexDigits                  = LegoColours.__getValue(subline, "VALUE")[1:]
-                        colour["secondary_colour"] = LegoColours.hexDigitsToLinearRGBA(hexDigits, 1.0)
-                        colour["fraction"]         = LegoColours.__getValue(subline, "FRACTION")
-                        colour["vfraction"]        = LegoColours.__getValue(subline, "VFRACTION")
-                        colour["size"]             = LegoColours.__getValue(subline, "SIZE")
-                        colour["minsize"]          = LegoColours.__getValue(subline, "MINSIZE")
-                        colour["maxsize"]          = LegoColours.__getValue(subline, "MAXSIZE")
+                        colour["material"] = LegoColours.__getValue(
+                            subline, "MATERIAL")
+                        hexDigits = LegoColours.__getValue(
+                            subline, "VALUE")[1:]
+                        colour["secondary_colour"] = LegoColours.hexDigitsToLinearRGBA(
+                            hexDigits, 1.0)
+                        colour["fraction"] = LegoColours.__getValue(
+                            subline, "FRACTION")
+                        colour["vfraction"] = LegoColours.__getValue(
+                            subline, "VFRACTION")
+                        colour["size"] = LegoColours.__getValue(
+                            subline, "SIZE")
+                        colour["minsize"] = LegoColours.__getValue(
+                            subline, "MINSIZE")
+                        colour["maxsize"] = LegoColours.__getValue(
+                            subline, "MAXSIZE")
 
                     LegoColours.colours[code] = colour
 
@@ -1054,127 +1130,245 @@ class LegoColours:
                                                   (colour[0] / 255, colour[1] / 255, colour[2] / 255))
             else:
                 debugPrint("Loading built-in lgeo colours.")
-                LegoColours.__overwriteColour(  0, ( 33 / 255,  33 / 255,  33 / 255))
-                LegoColours.__overwriteColour(  1, ( 13 / 255, 105 / 255, 171 / 255))
-                LegoColours.__overwriteColour(  2, ( 40 / 255, 127 / 255,  70 / 255))
-                LegoColours.__overwriteColour(  3, (  0 / 255, 143 / 255, 155 / 255))
-                LegoColours.__overwriteColour(  4, (196 / 255,  40 / 255,  27 / 255))
-                LegoColours.__overwriteColour(  5, (205 / 255,  98 / 255, 152 / 255))
-                LegoColours.__overwriteColour(  6, ( 98 / 255,  71 / 255,  50 / 255))
-                LegoColours.__overwriteColour(  7, (161 / 255, 165 / 255, 162 / 255))
-                LegoColours.__overwriteColour(  8, (109 / 255, 110 / 255, 108 / 255))
-                LegoColours.__overwriteColour(  9, (180 / 255, 210 / 255, 227 / 255))
-                LegoColours.__overwriteColour( 10, ( 75 / 255, 151 / 255,  74 / 255))
-                LegoColours.__overwriteColour( 11, ( 85 / 255, 165 / 255, 175 / 255))
-                LegoColours.__overwriteColour( 12, (242 / 255, 112 / 255,  94 / 255))
-                LegoColours.__overwriteColour( 13, (252 / 255, 151 / 255, 172 / 255))
-                LegoColours.__overwriteColour( 14, (245 / 255, 205 / 255,  47 / 255))
-                LegoColours.__overwriteColour( 15, (242 / 255, 243 / 255, 242 / 255))
-                LegoColours.__overwriteColour( 17, (194 / 255, 218 / 255, 184 / 255))
-                LegoColours.__overwriteColour( 18, (249 / 255, 233 / 255, 153 / 255))
-                LegoColours.__overwriteColour( 19, (215 / 255, 197 / 255, 153 / 255))
-                LegoColours.__overwriteColour( 20, (193 / 255, 202 / 255, 222 / 255))
-                LegoColours.__overwriteColour( 21, (224 / 255, 255 / 255, 176 / 255))
-                LegoColours.__overwriteColour( 22, (107 / 255,  50 / 255, 123 / 255))
-                LegoColours.__overwriteColour( 23, ( 35 / 255,  71 / 255, 139 / 255))
-                LegoColours.__overwriteColour( 25, (218 / 255, 133 / 255,  64 / 255))
-                LegoColours.__overwriteColour( 26, (146 / 255,  57 / 255, 120 / 255))
-                LegoColours.__overwriteColour( 27, (164 / 255, 189 / 255,  70 / 255))
-                LegoColours.__overwriteColour( 28, (149 / 255, 138 / 255, 115 / 255))
-                LegoColours.__overwriteColour( 29, (228 / 255, 173 / 255, 200 / 255))
-                LegoColours.__overwriteColour( 30, (172 / 255, 120 / 255, 186 / 255))
-                LegoColours.__overwriteColour( 31, (225 / 255, 213 / 255, 237 / 255))
-                LegoColours.__overwriteColour( 32, (  0 / 255,  20 / 255,  20 / 255))
-                LegoColours.__overwriteColour( 33, (123 / 255, 182 / 255, 232 / 255))
-                LegoColours.__overwriteColour( 34, (132 / 255, 182 / 255, 141 / 255))
-                LegoColours.__overwriteColour( 35, (217 / 255, 228 / 255, 167 / 255))
-                LegoColours.__overwriteColour( 36, (205 / 255,  84 / 255,  75 / 255))
-                LegoColours.__overwriteColour( 37, (228 / 255, 173 / 255, 200 / 255))
-                LegoColours.__overwriteColour( 38, (255 / 255,  43 / 255,   0 / 225))
-                LegoColours.__overwriteColour( 40, (166 / 255, 145 / 255, 130 / 255))
-                LegoColours.__overwriteColour( 41, (170 / 255, 229 / 255, 255 / 255))
-                LegoColours.__overwriteColour( 42, (198 / 255, 255 / 255,   0 / 255))
-                LegoColours.__overwriteColour( 43, (193 / 255, 223 / 255, 240 / 255))
-                LegoColours.__overwriteColour( 44, (150 / 255, 112 / 255, 159 / 255))
-                LegoColours.__overwriteColour( 46, (247 / 255, 241 / 255, 141 / 255))
-                LegoColours.__overwriteColour( 47, (252 / 255, 252 / 255, 252 / 255))
-                LegoColours.__overwriteColour( 52, (156 / 255, 149 / 255, 199 / 255))
-                LegoColours.__overwriteColour( 54, (255 / 255, 246 / 255, 123 / 255))
-                LegoColours.__overwriteColour( 57, (226 / 255, 176 / 255,  96 / 255))
-                LegoColours.__overwriteColour( 65, (236 / 255, 201 / 255,  53 / 255))
-                LegoColours.__overwriteColour( 66, (202 / 255, 176 / 255,   0 / 255))
-                LegoColours.__overwriteColour( 67, (255 / 255, 255 / 255, 255 / 255))
-                LegoColours.__overwriteColour( 68, (243 / 255, 207 / 255, 155 / 255))
-                LegoColours.__overwriteColour( 69, (142 / 255,  66 / 255, 133 / 255))
-                LegoColours.__overwriteColour( 70, (105 / 255,  64 / 255,  39 / 255))
-                LegoColours.__overwriteColour( 71, (163 / 255, 162 / 255, 164 / 255))
-                LegoColours.__overwriteColour( 72, ( 99 / 255,  95 / 255,  97 / 255))
-                LegoColours.__overwriteColour( 73, (110 / 255, 153 / 255, 201 / 255))
-                LegoColours.__overwriteColour( 74, (161 / 255, 196 / 255, 139 / 255))
-                LegoColours.__overwriteColour( 77, (220 / 255, 144 / 255, 149 / 255))
-                LegoColours.__overwriteColour( 78, (246 / 255, 215 / 255, 179 / 255))
-                LegoColours.__overwriteColour( 79, (255 / 255, 255 / 255, 255 / 255))
-                LegoColours.__overwriteColour( 80, (140 / 255, 140 / 255, 140 / 255))
-                LegoColours.__overwriteColour( 82, (219 / 255, 172 / 255,  52 / 255))
-                LegoColours.__overwriteColour( 84, (170 / 255, 125 / 255,  85 / 255))
-                LegoColours.__overwriteColour( 85, ( 52 / 255,  43 / 255, 117 / 255))
-                LegoColours.__overwriteColour( 86, (124 / 255,  92 / 255,  69 / 255))
-                LegoColours.__overwriteColour( 89, (155 / 255, 178 / 255, 239 / 255))
-                LegoColours.__overwriteColour( 92, (204 / 255, 142 / 255, 104 / 255))
-                LegoColours.__overwriteColour(100, (238 / 255, 196 / 255, 182 / 255))
-                LegoColours.__overwriteColour(115, (199 / 255, 210 / 255,  60 / 255))
-                LegoColours.__overwriteColour(134, (174 / 255, 122 / 255,  89 / 255))
-                LegoColours.__overwriteColour(135, (171 / 255, 173 / 255, 172 / 255))
-                LegoColours.__overwriteColour(137, (106 / 255, 122 / 255, 150 / 255))
-                LegoColours.__overwriteColour(142, (220 / 255, 188 / 255, 129 / 255))
-                LegoColours.__overwriteColour(148, ( 62 / 255,  60 / 255,  57 / 255))
-                LegoColours.__overwriteColour(151, ( 14 / 255,  94 / 255,  77 / 255))
-                LegoColours.__overwriteColour(179, (160 / 255, 160 / 255, 160 / 255))
-                LegoColours.__overwriteColour(183, (242 / 255, 243 / 255, 242 / 255))
-                LegoColours.__overwriteColour(191, (248 / 255, 187 / 255,  61 / 255))
-                LegoColours.__overwriteColour(212, (159 / 255, 195 / 255, 233 / 255))
-                LegoColours.__overwriteColour(216, (143 / 255,  76 / 255,  42 / 255))
-                LegoColours.__overwriteColour(226, (253 / 255, 234 / 255, 140 / 255))
-                LegoColours.__overwriteColour(232, (125 / 255, 187 / 255, 221 / 255))
-                LegoColours.__overwriteColour(256, ( 33 / 255,  33 / 255,  33 / 255))
-                LegoColours.__overwriteColour(272, ( 32 / 255,  58 / 255,  86 / 255))
-                LegoColours.__overwriteColour(273, ( 13 / 255, 105 / 255, 171 / 255))
-                LegoColours.__overwriteColour(288, ( 39 / 255,  70 / 255,  44 / 255))
-                LegoColours.__overwriteColour(294, (189 / 255, 198 / 255, 173 / 255))
-                LegoColours.__overwriteColour(297, (170 / 255, 127 / 255,  46 / 255))
-                LegoColours.__overwriteColour(308, ( 53 / 255,  33 / 255,   0 / 255))
-                LegoColours.__overwriteColour(313, (171 / 255, 217 / 255, 255 / 255))
-                LegoColours.__overwriteColour(320, (123 / 255,  46 / 255,  47 / 255))
-                LegoColours.__overwriteColour(321, ( 70 / 255, 155 / 255, 195 / 255))
-                LegoColours.__overwriteColour(322, (104 / 255, 195 / 255, 226 / 255))
-                LegoColours.__overwriteColour(323, (211 / 255, 242 / 255, 234 / 255))
-                LegoColours.__overwriteColour(324, (196 / 255,   0 / 255,  38 / 255))
-                LegoColours.__overwriteColour(326, (226 / 255, 249 / 255, 154 / 255))
-                LegoColours.__overwriteColour(330, (119 / 255, 119 / 255,  78 / 255))
-                LegoColours.__overwriteColour(334, (187 / 255, 165 / 255,  61 / 255))
-                LegoColours.__overwriteColour(335, (149 / 255, 121 / 255, 118 / 255))
-                LegoColours.__overwriteColour(366, (209 / 255, 131 / 255,   4 / 255))
-                LegoColours.__overwriteColour(373, (135 / 255, 124 / 255, 144 / 255))
-                LegoColours.__overwriteColour(375, (193 / 255, 194 / 255, 193 / 255))
-                LegoColours.__overwriteColour(378, (120 / 255, 144 / 255, 129 / 255))
-                LegoColours.__overwriteColour(379, ( 94 / 255, 116 / 255, 140 / 255))
-                LegoColours.__overwriteColour(383, (224 / 255, 224 / 255, 224 / 255))
-                LegoColours.__overwriteColour(406, (  0 / 255,  29 / 255, 104 / 255))
-                LegoColours.__overwriteColour(449, (129 / 255,   0 / 255, 123 / 255))
-                LegoColours.__overwriteColour(450, (203 / 255, 132 / 255,  66 / 255))
-                LegoColours.__overwriteColour(462, (226 / 255, 155 / 255,  63 / 255))
-                LegoColours.__overwriteColour(484, (160 / 255,  95 / 255,  52 / 255))
-                LegoColours.__overwriteColour(490, (215 / 255, 240 / 255,   0 / 255))
-                LegoColours.__overwriteColour(493, (101 / 255, 103 / 255,  97 / 255))
-                LegoColours.__overwriteColour(494, (208 / 255, 208 / 255, 208 / 255))
-                LegoColours.__overwriteColour(496, (163 / 255, 162 / 255, 164 / 255))
-                LegoColours.__overwriteColour(503, (199 / 255, 193 / 255, 183 / 255))
-                LegoColours.__overwriteColour(504, (137 / 255, 135 / 255, 136 / 255))
-                LegoColours.__overwriteColour(511, (250 / 255, 250 / 255, 250 / 255))
+                LegoColours.__overwriteColour(
+                    0, (33 / 255,  33 / 255,  33 / 255))
+                LegoColours.__overwriteColour(
+                    1, (13 / 255, 105 / 255, 171 / 255))
+                LegoColours.__overwriteColour(
+                    2, (40 / 255, 127 / 255,  70 / 255))
+                LegoColours.__overwriteColour(
+                    3, (0 / 255, 143 / 255, 155 / 255))
+                LegoColours.__overwriteColour(
+                    4, (196 / 255,  40 / 255,  27 / 255))
+                LegoColours.__overwriteColour(
+                    5, (205 / 255,  98 / 255, 152 / 255))
+                LegoColours.__overwriteColour(
+                    6, (98 / 255,  71 / 255,  50 / 255))
+                LegoColours.__overwriteColour(
+                    7, (161 / 255, 165 / 255, 162 / 255))
+                LegoColours.__overwriteColour(
+                    8, (109 / 255, 110 / 255, 108 / 255))
+                LegoColours.__overwriteColour(
+                    9, (180 / 255, 210 / 255, 227 / 255))
+                LegoColours.__overwriteColour(
+                    10, (75 / 255, 151 / 255,  74 / 255))
+                LegoColours.__overwriteColour(
+                    11, (85 / 255, 165 / 255, 175 / 255))
+                LegoColours.__overwriteColour(
+                    12, (242 / 255, 112 / 255,  94 / 255))
+                LegoColours.__overwriteColour(
+                    13, (252 / 255, 151 / 255, 172 / 255))
+                LegoColours.__overwriteColour(
+                    14, (245 / 255, 205 / 255,  47 / 255))
+                LegoColours.__overwriteColour(
+                    15, (242 / 255, 243 / 255, 242 / 255))
+                LegoColours.__overwriteColour(
+                    17, (194 / 255, 218 / 255, 184 / 255))
+                LegoColours.__overwriteColour(
+                    18, (249 / 255, 233 / 255, 153 / 255))
+                LegoColours.__overwriteColour(
+                    19, (215 / 255, 197 / 255, 153 / 255))
+                LegoColours.__overwriteColour(
+                    20, (193 / 255, 202 / 255, 222 / 255))
+                LegoColours.__overwriteColour(
+                    21, (224 / 255, 255 / 255, 176 / 255))
+                LegoColours.__overwriteColour(
+                    22, (107 / 255,  50 / 255, 123 / 255))
+                LegoColours.__overwriteColour(
+                    23, (35 / 255,  71 / 255, 139 / 255))
+                LegoColours.__overwriteColour(
+                    25, (218 / 255, 133 / 255,  64 / 255))
+                LegoColours.__overwriteColour(
+                    26, (146 / 255,  57 / 255, 120 / 255))
+                LegoColours.__overwriteColour(
+                    27, (164 / 255, 189 / 255,  70 / 255))
+                LegoColours.__overwriteColour(
+                    28, (149 / 255, 138 / 255, 115 / 255))
+                LegoColours.__overwriteColour(
+                    29, (228 / 255, 173 / 255, 200 / 255))
+                LegoColours.__overwriteColour(
+                    30, (172 / 255, 120 / 255, 186 / 255))
+                LegoColours.__overwriteColour(
+                    31, (225 / 255, 213 / 255, 237 / 255))
+                LegoColours.__overwriteColour(
+                    32, (0 / 255,  20 / 255,  20 / 255))
+                LegoColours.__overwriteColour(
+                    33, (123 / 255, 182 / 255, 232 / 255))
+                LegoColours.__overwriteColour(
+                    34, (132 / 255, 182 / 255, 141 / 255))
+                LegoColours.__overwriteColour(
+                    35, (217 / 255, 228 / 255, 167 / 255))
+                LegoColours.__overwriteColour(
+                    36, (205 / 255,  84 / 255,  75 / 255))
+                LegoColours.__overwriteColour(
+                    37, (228 / 255, 173 / 255, 200 / 255))
+                LegoColours.__overwriteColour(
+                    38, (255 / 255,  43 / 255,   0 / 225))
+                LegoColours.__overwriteColour(
+                    40, (166 / 255, 145 / 255, 130 / 255))
+                LegoColours.__overwriteColour(
+                    41, (170 / 255, 229 / 255, 255 / 255))
+                LegoColours.__overwriteColour(
+                    42, (198 / 255, 255 / 255,   0 / 255))
+                LegoColours.__overwriteColour(
+                    43, (193 / 255, 223 / 255, 240 / 255))
+                LegoColours.__overwriteColour(
+                    44, (150 / 255, 112 / 255, 159 / 255))
+                LegoColours.__overwriteColour(
+                    46, (247 / 255, 241 / 255, 141 / 255))
+                LegoColours.__overwriteColour(
+                    47, (252 / 255, 252 / 255, 252 / 255))
+                LegoColours.__overwriteColour(
+                    52, (156 / 255, 149 / 255, 199 / 255))
+                LegoColours.__overwriteColour(
+                    54, (255 / 255, 246 / 255, 123 / 255))
+                LegoColours.__overwriteColour(
+                    57, (226 / 255, 176 / 255,  96 / 255))
+                LegoColours.__overwriteColour(
+                    65, (236 / 255, 201 / 255,  53 / 255))
+                LegoColours.__overwriteColour(
+                    66, (202 / 255, 176 / 255,   0 / 255))
+                LegoColours.__overwriteColour(
+                    67, (255 / 255, 255 / 255, 255 / 255))
+                LegoColours.__overwriteColour(
+                    68, (243 / 255, 207 / 255, 155 / 255))
+                LegoColours.__overwriteColour(
+                    69, (142 / 255,  66 / 255, 133 / 255))
+                LegoColours.__overwriteColour(
+                    70, (105 / 255,  64 / 255,  39 / 255))
+                LegoColours.__overwriteColour(
+                    71, (163 / 255, 162 / 255, 164 / 255))
+                LegoColours.__overwriteColour(
+                    72, (99 / 255,  95 / 255,  97 / 255))
+                LegoColours.__overwriteColour(
+                    73, (110 / 255, 153 / 255, 201 / 255))
+                LegoColours.__overwriteColour(
+                    74, (161 / 255, 196 / 255, 139 / 255))
+                LegoColours.__overwriteColour(
+                    77, (220 / 255, 144 / 255, 149 / 255))
+                LegoColours.__overwriteColour(
+                    78, (246 / 255, 215 / 255, 179 / 255))
+                LegoColours.__overwriteColour(
+                    79, (255 / 255, 255 / 255, 255 / 255))
+                LegoColours.__overwriteColour(
+                    80, (140 / 255, 140 / 255, 140 / 255))
+                LegoColours.__overwriteColour(
+                    82, (219 / 255, 172 / 255,  52 / 255))
+                LegoColours.__overwriteColour(
+                    84, (170 / 255, 125 / 255,  85 / 255))
+                LegoColours.__overwriteColour(
+                    85, (52 / 255,  43 / 255, 117 / 255))
+                LegoColours.__overwriteColour(
+                    86, (124 / 255,  92 / 255,  69 / 255))
+                LegoColours.__overwriteColour(
+                    89, (155 / 255, 178 / 255, 239 / 255))
+                LegoColours.__overwriteColour(
+                    92, (204 / 255, 142 / 255, 104 / 255))
+                LegoColours.__overwriteColour(
+                    100, (238 / 255, 196 / 255, 182 / 255))
+                LegoColours.__overwriteColour(
+                    115, (199 / 255, 210 / 255,  60 / 255))
+                LegoColours.__overwriteColour(
+                    134, (174 / 255, 122 / 255,  89 / 255))
+                LegoColours.__overwriteColour(
+                    135, (171 / 255, 173 / 255, 172 / 255))
+                LegoColours.__overwriteColour(
+                    137, (106 / 255, 122 / 255, 150 / 255))
+                LegoColours.__overwriteColour(
+                    142, (220 / 255, 188 / 255, 129 / 255))
+                LegoColours.__overwriteColour(
+                    148, (62 / 255,  60 / 255,  57 / 255))
+                LegoColours.__overwriteColour(
+                    151, (14 / 255,  94 / 255,  77 / 255))
+                LegoColours.__overwriteColour(
+                    179, (160 / 255, 160 / 255, 160 / 255))
+                LegoColours.__overwriteColour(
+                    183, (242 / 255, 243 / 255, 242 / 255))
+                LegoColours.__overwriteColour(
+                    191, (248 / 255, 187 / 255,  61 / 255))
+                LegoColours.__overwriteColour(
+                    212, (159 / 255, 195 / 255, 233 / 255))
+                LegoColours.__overwriteColour(
+                    216, (143 / 255,  76 / 255,  42 / 255))
+                LegoColours.__overwriteColour(
+                    226, (253 / 255, 234 / 255, 140 / 255))
+                LegoColours.__overwriteColour(
+                    232, (125 / 255, 187 / 255, 221 / 255))
+                LegoColours.__overwriteColour(
+                    256, (33 / 255,  33 / 255,  33 / 255))
+                LegoColours.__overwriteColour(
+                    272, (32 / 255,  58 / 255,  86 / 255))
+                LegoColours.__overwriteColour(
+                    273, (13 / 255, 105 / 255, 171 / 255))
+                LegoColours.__overwriteColour(
+                    288, (39 / 255,  70 / 255,  44 / 255))
+                LegoColours.__overwriteColour(
+                    294, (189 / 255, 198 / 255, 173 / 255))
+                LegoColours.__overwriteColour(
+                    297, (170 / 255, 127 / 255,  46 / 255))
+                LegoColours.__overwriteColour(
+                    308, (53 / 255,  33 / 255,   0 / 255))
+                LegoColours.__overwriteColour(
+                    313, (171 / 255, 217 / 255, 255 / 255))
+                LegoColours.__overwriteColour(
+                    320, (123 / 255,  46 / 255,  47 / 255))
+                LegoColours.__overwriteColour(
+                    321, (70 / 255, 155 / 255, 195 / 255))
+                LegoColours.__overwriteColour(
+                    322, (104 / 255, 195 / 255, 226 / 255))
+                LegoColours.__overwriteColour(
+                    323, (211 / 255, 242 / 255, 234 / 255))
+                LegoColours.__overwriteColour(
+                    324, (196 / 255,   0 / 255,  38 / 255))
+                LegoColours.__overwriteColour(
+                    326, (226 / 255, 249 / 255, 154 / 255))
+                LegoColours.__overwriteColour(
+                    330, (119 / 255, 119 / 255,  78 / 255))
+                LegoColours.__overwriteColour(
+                    334, (187 / 255, 165 / 255,  61 / 255))
+                LegoColours.__overwriteColour(
+                    335, (149 / 255, 121 / 255, 118 / 255))
+                LegoColours.__overwriteColour(
+                    366, (209 / 255, 131 / 255,   4 / 255))
+                LegoColours.__overwriteColour(
+                    373, (135 / 255, 124 / 255, 144 / 255))
+                LegoColours.__overwriteColour(
+                    375, (193 / 255, 194 / 255, 193 / 255))
+                LegoColours.__overwriteColour(
+                    378, (120 / 255, 144 / 255, 129 / 255))
+                LegoColours.__overwriteColour(
+                    379, (94 / 255, 116 / 255, 140 / 255))
+                LegoColours.__overwriteColour(
+                    383, (224 / 255, 224 / 255, 224 / 255))
+                LegoColours.__overwriteColour(
+                    406, (0 / 255,  29 / 255, 104 / 255))
+                LegoColours.__overwriteColour(
+                    449, (129 / 255,   0 / 255, 123 / 255))
+                LegoColours.__overwriteColour(
+                    450, (203 / 255, 132 / 255,  66 / 255))
+                LegoColours.__overwriteColour(
+                    462, (226 / 255, 155 / 255,  63 / 255))
+                LegoColours.__overwriteColour(
+                    484, (160 / 255,  95 / 255,  52 / 255))
+                LegoColours.__overwriteColour(
+                    490, (215 / 255, 240 / 255,   0 / 255))
+                LegoColours.__overwriteColour(
+                    493, (101 / 255, 103 / 255,  97 / 255))
+                LegoColours.__overwriteColour(
+                    494, (208 / 255, 208 / 255, 208 / 255))
+                LegoColours.__overwriteColour(
+                    496, (163 / 255, 162 / 255, 164 / 255))
+                LegoColours.__overwriteColour(
+                    503, (199 / 255, 193 / 255, 183 / 255))
+                LegoColours.__overwriteColour(
+                    504, (137 / 255, 135 / 255, 136 / 255))
+                LegoColours.__overwriteColour(
+                    511, (250 / 255, 250 / 255, 250 / 255))
 
         # Colour Space Management: Convert these sRGB colour values to Blender's linear RGB colour space
         for key in LegoColours.colours:
-            LegoColours.colours[key]["colour"] = LegoColours.sRGBtoLinearRGB(LegoColours.colours[key]["colour"])
+            LegoColours.colours[key]["colour"] = LegoColours.sRGBtoLinearRGB(
+                LegoColours.colours[key]["colour"])
 
     def lightenRGBA(colour, scale):
         # Moves the linear RGB values closer to white
@@ -1210,7 +1404,7 @@ class FileSystem:
     """
     Reads text files in different encodings. Locates full filepath for a part.
     """
-        # Takes a case-insensitive filepath and constructs a case sensitive version (based on an actual existing file)
+    # Takes a case-insensitive filepath and constructs a case sensitive version (based on an actual existing file)
     # See https://stackoverflow.com/questions/8462449/python-case-insensitive-file-name/8462613#8462613
     def pathInsensitive(path):
         """
@@ -1374,19 +1568,19 @@ class CachedDirectoryFilenames:
 class CachedLibraries:
     """Cached dictionary of LDrawLibrary objects"""
 
-    notFound          = -2
-    allLibraries      = -1
-    officialLibrary   = 0
+    notFound = -2
+    allLibraries = -1
+    officialLibrary = 0
     unofficialLibrary = 1
 
     # Dictionary list - holds populated dictionaries
-    __cache           = []
+    __cache = []
 
     # Library Dictionaries
-    __officialcache   = {}
+    __officialcache = {}
     __unofficialcache = {}
 
-    __initialUpdate   = True
+    __initialUpdate = True
 
     def getEncoding(bioSlice):
         # The file uses UCS-2 (UTF-16) Big Endian encoding
@@ -1428,11 +1622,13 @@ class CachedLibraries:
                     return None
 
     def setOfficialCache(library):
-        CachedLibraries.__officialcache = {key: library.read(key) for key in library.namelist()}
+        CachedLibraries.__officialcache = {
+            key: library.read(key) for key in library.namelist()}
         CachedLibraries.__cache.append(CachedLibraries.__officialcache)
 
     def setUnofficialCache(library):
-        CachedLibraries.__unofficialcache = {key: library.read(key) for key in library.namelist()}
+        CachedLibraries.__unofficialcache = {
+            key: library.read(key) for key in library.namelist()}
         CachedLibraries.__cache.append(CachedLibraries.__unofficialcache)
         CachedLibraries.__initialUpdate = False
 
@@ -1523,14 +1719,17 @@ class LDrawGeometry:
         newPoints = []
         for i in range(num_points):
             blenderPos = matvecmul(Math.scaleMatrix, mathutils.Vector((float(parameters[i * 3 + 2]),
-                                                                       float(parameters[i * 3 + 3]),
+                                                                       float(
+                                                                           parameters[i * 3 + 3]),
                                                                        float(parameters[i * 3 + 4]))))
             newPoints.append(blenderPos)
 
         # Fix "bowtie" quadrilaterals (see http://wiki.ldraw.org/index.php?title=LDraw_technical_restrictions#Complex_quadrilaterals)
         if num_points == 4:
-            nA = (newPoints[1] - newPoints[0]).cross(newPoints[2] - newPoints[0])
-            nB = (newPoints[2] - newPoints[1]).cross(newPoints[3] - newPoints[1])
+            nA = (newPoints[1] - newPoints[0]
+                  ).cross(newPoints[2] - newPoints[0])
+            nB = (newPoints[2] - newPoints[1]
+                  ).cross(newPoints[3] - newPoints[1])
             if (nA.dot(nB) < 0):
                 newPoints[2], newPoints[3] = newPoints[3], newPoints[2]
 
@@ -1538,7 +1737,8 @@ class LDrawGeometry:
         newFace = list(range(pointCount, pointCount + num_points))
         self.points.extend(newPoints)
         self.faces.append(newFace)
-        self.faceInfo.append(FaceInfo(colourName, cull, ccw, isGrainySlopeAllowed))
+        self.faceInfo.append(
+            FaceInfo(colourName, cull, ccw, isGrainySlopeAllowed))
 
     def parseEdge(self, parameters):
         """Parse an edge from parameters"""
@@ -1546,10 +1746,12 @@ class LDrawGeometry:
         colourName = parameters[1]
         if colourName == "24":
             blenderPos1 = matvecmul(Math.scaleMatrix, mathutils.Vector((float(parameters[2]),
-                                                                        float(parameters[3]),
+                                                                        float(
+                                                                            parameters[3]),
                                                                         float(parameters[4]))))
             blenderPos2 = matvecmul(Math.scaleMatrix, mathutils.Vector((float(parameters[5]),
-                                                                        float(parameters[6]),
+                                                                        float(
+                                                                            parameters[6]),
                                                                         float(parameters[7]))))
             self.edges.append((blenderPos1, blenderPos2))
 
@@ -1620,7 +1822,8 @@ class LDrawGeometry:
         # Append edge information
         newEdges = []
         for edge in geometry.edges:
-            newEdges.append((matvecmul(fixedMatrix, edge[0]), matvecmul(fixedMatrix, edge[1])))
+            newEdges.append(
+                (matvecmul(fixedMatrix, edge[0]), matvecmul(fixedMatrix, edge[1])))
         self.edges.extend(newEdges)
 
 
@@ -1632,18 +1835,18 @@ class LDrawNode:
     def __init__(self, filename, isFullFilepath, parentFilepath, colourName=Options.defaultColour,
                  matrix=Math.identityMatrix, bfcCull=True, bfcInverted=False, isLSynthPart=False, isSubPart=False,
                  isRootNode=True, groupNames=[]):
-        self.filename       = filename
+        self.filename = filename
         self.isFullFilepath = isFullFilepath
         self.parentFilepath = parentFilepath
-        self.matrix         = matrix
-        self.colourName     = colourName
-        self.bfcInverted    = bfcInverted
-        self.bfcCull        = bfcCull
-        self.file           = None
-        self.isLSynthPart   = isLSynthPart
-        self.isSubPart      = isSubPart
-        self.isRootNode     = isRootNode
-        self.groupNames     = groupNames.copy()
+        self.matrix = matrix
+        self.colourName = colourName
+        self.bfcInverted = bfcInverted
+        self.bfcCull = bfcCull
+        self.file = None
+        self.isLSynthPart = isLSynthPart
+        self.isSubPart = isSubPart
+        self.isRootNode = isRootNode
+        self.groupNames = groupNames.copy()
 
     def look_at(scene_obj, target, up_vector):
         if isBlender28OrLater:
@@ -1660,7 +1863,7 @@ class LDrawNode:
             # print("UpVec  = " + str(up_vector[0]) + "," + str(up_vector[1]) + "," + str(up_vector[2]))
 
             # back vector is a vector pointing from the target to the camera
-            back = loc_scene_obj - target;
+            back = loc_scene_obj - target
             back.normalize()
 
             # If our back and up vectors are very close to pointing the same way (or opposite), choose a different up_vector
@@ -1674,10 +1877,10 @@ class LDrawNode:
             up = back.cross(right)
             up.normalize()
 
-            row1 = [   right.x,   up.x,   back.x, loc_scene_obj.x ]
-            row2 = [   right.y,   up.y,   back.y, loc_scene_obj.y ]
-            row3 = [   right.z,   up.z,   back.z, loc_scene_obj.z ]
-            row4 = [       0.0,    0.0,      0.0,          1.0 ]
+            row1 = [right.x,   up.x,   back.x, loc_scene_obj.x]
+            row2 = [right.y,   up.y,   back.y, loc_scene_obj.y]
+            row3 = [right.z,   up.z,   back.z, loc_scene_obj.z]
+            row4 = [0.0,    0.0,      0.0,          1.0]
 
             # bpy.ops.mesh.primitive_ico_sphere_add(location=loc_scene_obj+up,size=0.1)
             # bpy.ops.mesh.primitive_cylinder_add(location=loc_scene_obj+back,radius = 0.1, depth=0.2)
@@ -1719,7 +1922,8 @@ class LDrawNode:
         self.file = CachedFiles.getCached(self.filename)
         if self.file is None:
             # Not in cache, so load file
-            self.file = LDrawFile(self.filename, self.isFullFilepath, self.parentFilepath, None, self.isSubPart)
+            self.file = LDrawFile(
+                self.filename, self.isFullFilepath, self.parentFilepath, None, self.isSubPart)
             assert self.file is not None
 
             # Add the new file to the cache
@@ -1744,7 +1948,8 @@ class LDrawNode:
             child.printBFC(depth + 1)
 
     def getBFCCode(accumCull, accumInvert, bfcCull, bfcInverted):
-        index = (8 if accumCull else 0) + (4 if accumInvert else 0) + (2 if bfcCull else 0) + (1 if bfcInverted else 0)
+        index = (8 if accumCull else 0) + (4 if accumInvert else 0) + \
+            (2 if bfcCull else 0) + (1 if bfcInverted else 0)
         # Normally meshes are culled and not inverted, so don't bother with a code in this case
         if index == 10:
             return ""
@@ -1767,29 +1972,35 @@ class LDrawNode:
         accumCull = accumCull and self.bfcCull
         accumInvert = accumInvert != self.bfcInverted
 
-        ourColourName = LDrawNode.resolveColour(self.colourName, realColourName)
-        code = LDrawNode.getBFCCode(accumCull, accumInvert, self.bfcCull, self.bfcInverted)
+        ourColourName = LDrawNode.resolveColour(
+            self.colourName, realColourName)
+        code = LDrawNode.getBFCCode(
+            accumCull, accumInvert, self.bfcCull, self.bfcInverted)
         meshName = "Mesh_{0}_{1}{2}".format(basename, ourColourName, code)
-        key = (self.filename, ourColourName, accumCull, accumInvert, self.bfcCull, self.bfcInverted)
+        key = (self.filename, ourColourName, accumCull,
+               accumInvert, self.bfcCull, self.bfcInverted)
         bakedGeometry = CachedGeometry.getCached(key)
         if bakedGeometry is None:
             combinedMatrix = matmul(parentMatrix, self.matrix)
 
             # Start with a copy of our file's geometry
-            assert len(self.file.geometry.faces) == len(self.file.geometry.faceInfo)
+            assert len(self.file.geometry.faces) == len(
+                self.file.geometry.faceInfo)
             bakedGeometry = LDrawGeometry()
             bakedGeometry.appendGeometry(self.file.geometry, Math.identityMatrix, self.file.isStud,
                                          self.file.isStudLogo, combinedMatrix, self.bfcCull, self.bfcInverted)
 
             # Replaces the default colour 16 in our faceColours list with a specific colour
             for faceInfo in bakedGeometry.faceInfo:
-                faceInfo.faceColour = LDrawNode.resolveColour(faceInfo.faceColour, ourColourName)
+                faceInfo.faceColour = LDrawNode.resolveColour(
+                    faceInfo.faceColour, ourColourName)
 
             # Append each child's geometry
             for child in self.file.childNodes:
                 assert child.file is not None
                 if not child.isBlenderObjectNode():
-                    childColourName = LDrawNode.resolveColour(child.colourName, ourColourName)
+                    childColourName = LDrawNode.resolveColour(
+                        child.colourName, ourColourName)
                     childMeshName, bg = child.getBlenderGeometry(childColourName, basename, combinedMatrix, accumCull,
                                                                  accumInvert)
 
@@ -1809,41 +2020,42 @@ class LDrawCamera:
     """Data about a camera"""
 
     def __init__(self):
-        self.fov_degrees       = 30.0
-        self.near              = 25.0
-        self.far               = 50000.0
-        self.latitude          = 23.0
-        self.longitude         = 45.0
-        self.distance          = 1.0       # LDU factored distance (not used)
-        self.position          = mathutils.Vector((0.0, 0.0, 0.0))
-        self.target_position   = mathutils.Vector((1.0, 0.0, 0.0))
-        self.up_vector         = mathutils.Vector((0.0, 1.0, 0.0))
-        self.fov_radians       = math.radians(self.fov_degrees)
-        self.name              = "LPub3D_Camera"
-        self.orthographic      = False
-        self.hidden            = False
+        self.fov_degrees = 30.0
+        self.near = 25.0
+        self.far = 50000.0
+        self.latitude = 23.0
+        self.longitude = 45.0
+        self.distance = 1.0       # LDU factored distance (not used)
+        self.position = mathutils.Vector((0.0, 0.0, 0.0))
+        self.target_position = mathutils.Vector((1.0, 0.0, 0.0))
+        self.up_vector = mathutils.Vector((0.0, 1.0, 0.0))
+        self.fov_radians = math.radians(self.fov_degrees)
+        self.name = "LPub3D_Camera"
+        self.orthographic = False
+        self.hidden = False
 
     def createCameraNode(self):
         camData = bpy.data.cameras.new(self.name)
         camera = bpy.data.objects.new(self.name, camData)
 
         # Add to scene
-        camera.data.lens_unit  = 'FOV'
+        camera.data.lens_unit = 'FOV'
         camera.data.sensor_fit = 'VERTICAL'
-        camera.location        = self.position
-        camera.data.angle      = self.fov_radians
-        camera.data.clip_end   = self.far
+        camera.location = self.position
+        camera.data.angle = self.fov_radians
+        camera.data.clip_end = self.far
         camera.data.clip_start = self.near
-        camera.data['hide']    = self.hidden
-        camera.data.show_name  = True
+        camera.data['hide'] = self.hidden
+        camera.data.show_name = True
         self.hidden = False
         if self.orthographic:
-            dist_target_to_camera = (self.position - self.target_position).length
+            dist_target_to_camera = (
+                self.position - self.target_position).length
             camera.data.ortho_scale = dist_target_to_camera / 1.92
-            camera.data.type  = 'ORTHO'
+            camera.data.type = 'ORTHO'
             self.orthographic = False
         else:
-            camera.data.type  = 'PERSP'
+            camera.data.type = 'PERSP'
 
         linkToScene(camera)
         LDrawNode.look_at(camera, self.target_position, self.up_vector)
@@ -1856,22 +2068,22 @@ class LDrawLight:
     """Data about a light"""
 
     def __init__(self):
-        self.type             = 'POINT'
-        self.shape            = 'SQUARE'
-        self.factorA          = 0.0
-        self.factorB          = 0.0
-        self.size             = 0.25
-        self.exponent         = 10
-        self.specular         = 1.0
-        self.spot_size        = 75        # degrees
-        self.spot_blend       = 0.150
-        self.cutoff_distance  = 40
-        self.name             = "LPub3D_Light"
-        self.color            = mathutils.Vector((1.0, 1.0, 1.0))
-        self.use_cutoff       = False
-        self.position         = mathutils.Vector((0.0, 0.0, 0.0))
-        self.target_position  = mathutils.Vector((1.0, 0.0, 0.0))
-        self.up_vector        = mathutils.Vector((0.0, 1.0, 0.0))
+        self.type = 'POINT'
+        self.shape = 'SQUARE'
+        self.factorA = 0.0
+        self.factorB = 0.0
+        self.size = 0.25
+        self.exponent = 10
+        self.specular = 1.0
+        self.spot_size = 75        # degrees
+        self.spot_blend = 0.150
+        self.cutoff_distance = 40
+        self.name = "LPub3D_Light"
+        self.color = mathutils.Vector((1.0, 1.0, 1.0))
+        self.use_cutoff = False
+        self.position = mathutils.Vector((0.0, 0.0, 0.0))
+        self.target_position = mathutils.Vector((1.0, 0.0, 0.0))
+        self.up_vector = mathutils.Vector((0.0, 1.0, 0.0))
 
     def createLightNode(self):
         if isBlender28OrLater:
@@ -1881,26 +2093,26 @@ class LDrawLight:
         light = bpy.data.objects.new(self.name, lightData)
 
         # Add to scene
-        light.data.color                = self.color
-        light.data.energy               = self.exponent
-        light.data.specular_factor      = self.specular
-        light.data.use_custom_distance  = self.use_cutoff
-        light.data.cutoff_distance      = self.cutoff_distance
+        light.data.color = self.color
+        light.data.energy = self.exponent
+        light.data.specular_factor = self.specular
+        light.data.use_custom_distance = self.use_cutoff
+        light.data.cutoff_distance = self.cutoff_distance
         if self.type == 'POINT':
             light.data.shadow_soft_size = self.factorA
         elif self.type == 'SUN':
-            light.data.angle            = math.radians(self.factorA)
+            light.data.angle = math.radians(self.factorA)
         elif self.type == 'SPOT':
-            light.data.spot_size        = math.radians(self.spot_size)
+            light.data.spot_size = math.radians(self.spot_size)
             light.data.shadow_soft_size = self.factorA
-            light.data.spot_blend       = self.factorB
+            light.data.spot_blend = self.factorB
         elif self.type == 'AREA':
-            light.data.shape            = self.shape
-            light.data.size             = self.size
+            light.data.shape = self.shape
+            light.data.size = self.size
             if self.shape == 'RECTANGLE' or self.shape == 'ELLIPSE':
-                light.data.size_y       = self.factorB
+                light.data.size_y = self.factorB
 
-        light.location                  = self.position
+        light.location = self.position
 
         linkToScene(light)
         LDrawNode.look_at(light, self.target_position, self.up_vector)
@@ -1958,7 +2170,8 @@ class LDrawFile:
                     if foundEnd is False:
                         endLine = lineCount
                         if endLine > startLine:
-                            sections.append((sectionFilename, lines[startLine:endLine]))
+                            sections.append(
+                                (sectionFilename, lines[startLine:endLine]))
 
                     startLine = lineCount
                     foundEnd = False
@@ -1967,7 +2180,8 @@ class LDrawFile:
                 if parameters[0] == "0" and parameters[1] == "NOFILE":
                     endLine = lineCount
                     foundEnd = True
-                    sections.append((sectionFilename, lines[startLine:endLine]))
+                    sections.append(
+                        (sectionFilename, lines[startLine:endLine]))
             lineCount += 1
 
         if foundEnd is False:
@@ -2040,18 +2254,18 @@ class LDrawFile:
         global globalCamerasToAdd
         global globalLightsToAdd
 
-        self.filename         = filename
-        self.lines            = lines
-        self.isPart           = False
-        self.isSubPart        = isSubPart
-        self.isModel          = False
-        self.isStud           = LDrawFile.__isStud(filename)
-        self.isStudLogo       = LDrawFile.__isStudLogo(filename)
-        self.isLSynthPart     = False
-        self.isDoubleSided    = False
-        self.geometry         = LDrawGeometry()
-        self.childNodes       = []
-        self.bfcCertified     = None
+        self.filename = filename
+        self.lines = lines
+        self.isPart = False
+        self.isSubPart = isSubPart
+        self.isModel = False
+        self.isStud = LDrawFile.__isStud(filename)
+        self.isStudLogo = LDrawFile.__isStudLogo(filename)
+        self.isLSynthPart = False
+        self.isDoubleSided = False
+        self.geometry = LDrawGeometry()
+        self.childNodes = []
+        self.bfcCertified = None
 
         isGrainySlopeAllowed = not self.isStud
 
@@ -2065,12 +2279,12 @@ class LDrawFile:
 
         # BFC = Back face culling. The rules are arcane and complex, but at least
         #       it's kind of documented: http://www.ldraw.org/article/415.html
-        bfcLocalCull          = True
-        bfcWindingCCW         = True
-        bfcInvertNext         = False
+        bfcLocalCull = True
+        bfcWindingCCW = True
+        bfcInvertNext = False
         processingLSynthParts = False
         camera = LDrawCamera()
-        light  = LDrawLight()
+        light = LDrawLight()
 
         currentGroupNames = []
 
@@ -2149,10 +2363,12 @@ class LDrawFile:
                                     camera.fov_degrees = float(parameters[1])
                                     parameters = parameters[2:]
                                 elif parameters[0] == "ZNEAR":
-                                    camera.near = Options.scale * float(parameters[1])
+                                    camera.near = Options.scale * \
+                                        float(parameters[1])
                                     parameters = parameters[2:]
                                 elif parameters[0] == "ZFAR":
-                                    camera.far = Options.scale * float(parameters[1])
+                                    camera.far = Options.scale * \
+                                        float(parameters[1])
                                     parameters = parameters[2:]
                                 elif parameters[0] == "POSITION":
                                     camera.position = matvecmul(Math.scaleMatrix, mathutils.Vector(
@@ -2173,7 +2389,8 @@ class LDrawFile:
                                     camera.hidden = True
                                     parameters = parameters[1:]
                                 elif parameters[0] == "NAME":
-                                    camera.name = "Imported {0}".format(line.split(" NAME ", 1)[1].strip())
+                                    camera.name = "Imported {0}".format(
+                                        line.split(" NAME ", 1)[1].strip())
 
                                     globalCamerasToAdd.append(camera)
                                     camera = LDrawCamera()
@@ -2205,7 +2422,8 @@ class LDrawFile:
                                     light.exponent = float(parameters[1])
                                     parameters = parameters[2:]
                                 elif parameters[0] == "ANGLE":
-                                    light.factorA = Options.scale * float(parameters[1])
+                                    light.factorA = Options.scale * \
+                                        float(parameters[1])
                                     parameters = parameters[2:]
                                 elif parameters[0] == "RADIUS":
                                     light.factorA = float(parameters[1])
@@ -2230,7 +2448,8 @@ class LDrawFile:
                                     parameters = parameters[2:]
                                 elif parameters[0] == "CUTOFF_DISTANCE":
                                     light.use_cutoff = True
-                                    light.cutoff_distance = float(parameters[1])
+                                    light.cutoff_distance = float(
+                                        parameters[1])
                                     parameters = parameters[2:]
                                 elif parameters[0] == "TYPE":
                                     light.type = parameters[1].upper().strip()
@@ -2239,7 +2458,8 @@ class LDrawFile:
                                     light.shape = parameters[1].upper().strip()
                                     parameters = parameters[2:]
                                 elif parameters[0] == "NAME":
-                                    light.name = "Imported {0}".format(line.split(" NAME ", 1)[1].strip())
+                                    light.name = "Imported {0}".format(
+                                        line.split(" NAME ", 1)[1].strip())
 
                                     globalLightsToAdd.append(light)
                                     light = LDrawLight()
@@ -2257,9 +2477,12 @@ class LDrawFile:
 
                 # Parse a File reference
                 if parameters[0] == "1":
-                    (x, y, z, a, b, c, d, e, f, g, h, i) = map(float, parameters[2:14])
-                    (x, y, z) = matvecmul(Math.scaleMatrix, mathutils.Vector((x, y, z)))
-                    localMatrix = mathutils.Matrix(((a, b, c, x), (d, e, f, y), (g, h, i, z), (0, 0, 0, 1)))
+                    (x, y, z, a, b, c, d, e, f, g, h, i) = map(
+                        float, parameters[2:14])
+                    (x, y, z) = matvecmul(
+                        Math.scaleMatrix, mathutils.Vector((x, y, z)))
+                    localMatrix = mathutils.Matrix(
+                        ((a, b, c, x), (d, e, f, y), (g, h, i, z), (0, 0, 0, 1)))
 
                     new_filename = " ".join(parameters[14:])
                     new_colourName = parameters[1]
@@ -2267,7 +2490,8 @@ class LDrawFile:
                     det = localMatrix.determinant()
                     if det < 0:
                         bfcInvertNext = not bfcInvertNext
-                    canCullChildNode = (self.bfcCertified or self.isModel) and bfcLocalCull and (det != 0)
+                    canCullChildNode = (
+                        self.bfcCertified or self.isModel) and bfcLocalCull and (det != 0)
 
                     newNode = LDrawNode(new_filename, False, self.fullFilepath, new_colourName, localMatrix,
                                         canCullChildNode, bfcInvertNext, processingLSynthParts, not self.isModel, False,
@@ -2283,13 +2507,16 @@ class LDrawFile:
                     if self.bfcCertified is None:
                         self.bfcCertified = False
                     if not self.bfcCertified or not bfcLocalCull:
-                        printWarningOnce("Found double-sided polygons in file {0}".format(self.filename))
+                        printWarningOnce(
+                            "Found double-sided polygons in file {0}".format(self.filename))
                         self.isDoubleSided = True
 
-                    assert len(self.geometry.faces) == len(self.geometry.faceInfo)
+                    assert len(self.geometry.faces) == len(
+                        self.geometry.faceInfo)
                     self.geometry.parseFace(parameters, self.bfcCertified and bfcLocalCull, bfcWindingCCW,
                                             isGrainySlopeAllowed)
-                    assert len(self.geometry.faces) == len(self.geometry.faceInfo)
+                    assert len(self.geometry.faces) == len(
+                        self.geometry.faceInfo)
 
                 bfcInvertNext = False
 
@@ -2370,7 +2597,7 @@ class BlenderMaterials:
         links.new(input.outputs[0], output.inputs[0])
 
         if Options.instructionsLook and alpha < 1.0:
-            mult = BlenderMaterials.__nodeMath(nodes, 'MULTIPLY', 200, -410);
+            mult = BlenderMaterials.__nodeMath(nodes, 'MULTIPLY', 200, -410)
             links.new(input.outputs[1], mult.inputs[0])
             links.new(mult.outputs[0], output.inputs[1])
         else:
@@ -2414,7 +2641,8 @@ class BlenderMaterials:
             nodes.remove(n)
 
         if col is not None:
-            BlenderMaterials.__setBlenderRenderProperties(material, nodes, links, col)
+            BlenderMaterials.__setBlenderRenderProperties(
+                material, nodes, links, col)
 
             isTransparent = col["alpha"] < 1.0
 
@@ -2425,25 +2653,32 @@ class BlenderMaterials:
                 material.use_screen_refraction = True
 
             if Options.instructionsLook:
-                BlenderMaterials.__createCyclesBasic(nodes, links, colour, col["alpha"], "")
+                BlenderMaterials.__createCyclesBasic(
+                    nodes, links, colour, col["alpha"], "")
             elif col["name"] == "Milky_White":
                 BlenderMaterials.__createCyclesMilkyWhite(nodes, links, colour)
             elif col["luminance"] > 0:
-                BlenderMaterials.__createCyclesEmission(nodes, links, colour, col["alpha"], col["luminance"])
+                BlenderMaterials.__createCyclesEmission(
+                    nodes, links, colour, col["alpha"], col["luminance"])
             elif col["material"] == "CHROME":
                 BlenderMaterials.__createCyclesChrome(nodes, links, colour)
             elif col["material"] == "PEARLESCENT":
-                BlenderMaterials.__createCyclesPearlescent(nodes, links, colour)
+                BlenderMaterials.__createCyclesPearlescent(
+                    nodes, links, colour)
             elif col["material"] == "METAL":
                 BlenderMaterials.__createCyclesMetal(nodes, links, colour)
             elif col["material"] == "GLITTER":
-                BlenderMaterials.__createCyclesGlitter(nodes, links, colour, col["secondary_colour"])
+                BlenderMaterials.__createCyclesGlitter(
+                    nodes, links, colour, col["secondary_colour"])
             elif col["material"] == "SPECKLE":
-                BlenderMaterials.__createCyclesSpeckle(nodes, links, colour, col["secondary_colour"])
+                BlenderMaterials.__createCyclesSpeckle(
+                    nodes, links, colour, col["secondary_colour"])
             elif col["material"] == "RUBBER":
-                BlenderMaterials.__createCyclesRubber(nodes, links, colour, col["alpha"])
+                BlenderMaterials.__createCyclesRubber(
+                    nodes, links, colour, col["alpha"])
             else:
-                BlenderMaterials.__createCyclesBasic(nodes, links, colour, col["alpha"], col["name"])
+                BlenderMaterials.__createCyclesBasic(
+                    nodes, links, colour, col["alpha"], col["name"])
 
             if isSlopeMaterial and not Options.instructionsLook:
                 BlenderMaterials.__createCyclesSlopeTexture(nodes, links, 0.6)
@@ -2453,62 +2688,71 @@ class BlenderMaterials:
             material["Lego.isTransparent"] = isTransparent
             return material
 
-        BlenderMaterials.__createCyclesBasic(nodes, links, (1.0, 1.0, 0.0, 1.0), 1.0, "")
+        BlenderMaterials.__createCyclesBasic(
+            nodes, links, (1.0, 1.0, 0.0, 1.0), 1.0, "")
         material["Lego.isTransparent"] = False
         return material
 
     def __nodeConcaveWalls(nodes, strength, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Concave Walls')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Concave Walls')]
         node.location = x, y
         node.inputs['Strength'].default_value = strength
         return node
 
     def __nodeSlopeTexture(nodes, strength, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Slope Texture')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Slope Texture')]
         node.location = x, y
         node.inputs['Strength'].default_value = strength
         return node
 
     def __nodeLegoStandard(nodes, colour, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Lego Standard')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Lego Standard')]
         node.location = x, y
         node.inputs['Color'].default_value = colour
         return node
 
     def __nodeLegoTransparentFluorescent(nodes, colour, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Lego Transparent Fluorescent')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Lego Transparent Fluorescent')]
         node.location = x, y
         node.inputs['Color'].default_value = colour
         return node
 
     def __nodeLegoTransparent(nodes, colour, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Lego Transparent')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Lego Transparent')]
         node.location = x, y
         node.inputs['Color'].default_value = colour
         return node
 
     def __nodeLegoRubberSolid(nodes, colour, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Lego Rubber Solid')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Lego Rubber Solid')]
         node.location = x, y
         node.inputs['Color'].default_value = colour
         return node
 
     def __nodeLegoRubberTranslucent(nodes, colour, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Lego Rubber Translucent')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Lego Rubber Translucent')]
         node.location = x, y
         node.inputs['Color'].default_value = colour
         return node
 
     def __nodeLegoEmission(nodes, colour, luminance, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Lego Emission')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Lego Emission')]
         node.location = x, y
         node.inputs['Color'].default_value = colour
         node.inputs['Luminance'].default_value = luminance
@@ -2516,28 +2760,32 @@ class BlenderMaterials:
 
     def __nodeLegoChrome(nodes, colour, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Lego Chrome')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Lego Chrome')]
         node.location = x, y
         node.inputs['Color'].default_value = colour
         return node
 
     def __nodeLegoPearlescent(nodes, colour, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Lego Pearlescent')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Lego Pearlescent')]
         node.location = x, y
         node.inputs['Color'].default_value = colour
         return node
 
     def __nodeLegoMetal(nodes, colour, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Lego Metal')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Lego Metal')]
         node.location = x, y
         node.inputs['Color'].default_value = colour
         return node
 
     def __nodeLegoGlitter(nodes, colour, glitterColour, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Lego Glitter')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Lego Glitter')]
         node.location = x, y
         node.inputs['Color'].default_value = colour
         node.inputs['Glitter Color'].default_value = glitterColour
@@ -2545,7 +2793,8 @@ class BlenderMaterials:
 
     def __nodeLegoSpeckle(nodes, colour, speckleColour, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Lego Speckle')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Lego Speckle')]
         node.location = x, y
         node.inputs['Color'].default_value = colour
         node.inputs['Speckle Color'].default_value = speckleColour
@@ -2553,7 +2802,8 @@ class BlenderMaterials:
 
     def __nodeLegoMilkyWhite(nodes, colour, x, y):
         node = nodes.new('ShaderNodeGroup')
-        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName('Lego Milky White')]
+        node.node_tree = bpy.data.node_groups[BlenderMaterials.__getGroupName(
+            'Lego Milky White')]
         node.location = x, y
         node.inputs['Color'].default_value = colour
         return node
@@ -2585,7 +2835,8 @@ class BlenderMaterials:
         node.location = x, y
         if Options.addSubsurface:
             node.inputs['Subsurface'].default_value = subsurface
-            node.inputs['Subsurface Radius'].default_value = mathutils.Vector((sub_rad, sub_rad, sub_rad))
+            node.inputs['Subsurface Radius'].default_value = mathutils.Vector(
+                (sub_rad, sub_rad, sub_rad))
         node.inputs['Metallic'].default_value = metallic
         node.inputs['Roughness'].default_value = roughness
         node.inputs['Clearcoat'].default_value = clearcoat
@@ -2770,9 +3021,11 @@ class BlenderMaterials:
 
         if alpha < 1:
             if LegoColours.isFluorescentTransparent(colName):
-                node = BlenderMaterials.__nodeLegoTransparentFluorescent(nodes, diffColour, 0, 5)
+                node = BlenderMaterials.__nodeLegoTransparentFluorescent(
+                    nodes, diffColour, 0, 5)
             else:
-                node = BlenderMaterials.__nodeLegoTransparent(nodes, diffColour, 0, 5)
+                node = BlenderMaterials.__nodeLegoTransparent(
+                    nodes, diffColour, 0, 5)
         else:
             node = BlenderMaterials.__nodeLegoStandard(nodes, diffColour, 0, 5)
 
@@ -2782,7 +3035,8 @@ class BlenderMaterials:
     def __createCyclesEmission(nodes, links, diffColour, alpha, luminance):
         """Emission material for Cycles render engine."""
 
-        node = BlenderMaterials.__nodeLegoEmission(nodes, diffColour, luminance / 100.0, 0, 5)
+        node = BlenderMaterials.__nodeLegoEmission(
+            nodes, diffColour, luminance / 100.0, 0, 5)
         out = BlenderMaterials.__nodeOutput(nodes, 200, 0)
         links.new(node.outputs['Shader'], out.inputs[0])
 
@@ -2811,7 +3065,8 @@ class BlenderMaterials:
         """Glitter material for Cycles render engine."""
 
         glitterColour = LegoColours.lightenRGBA(glitterColour, 0.5)
-        node = BlenderMaterials.__nodeLegoGlitter(nodes, diffColour, glitterColour, 0, 5)
+        node = BlenderMaterials.__nodeLegoGlitter(
+            nodes, diffColour, glitterColour, 0, 5)
         out = BlenderMaterials.__nodeOutput(nodes, 200, 0)
         links.new(node.outputs['Shader'], out.inputs[0])
 
@@ -2819,7 +3074,8 @@ class BlenderMaterials:
         """Speckle material for Cycles render engine."""
 
         speckleColour = LegoColours.lightenRGBA(speckleColour, 0.5)
-        node = BlenderMaterials.__nodeLegoSpeckle(nodes, diffColour, speckleColour, 0, 5)
+        node = BlenderMaterials.__nodeLegoSpeckle(
+            nodes, diffColour, speckleColour, 0, 5)
         out = BlenderMaterials.__nodeOutput(nodes, 200, 0)
         links.new(node.outputs['Shader'], out.inputs[0])
 
@@ -2829,9 +3085,11 @@ class BlenderMaterials:
         out = BlenderMaterials.__nodeOutput(nodes, 200, 0)
 
         if alpha < 1.0:
-            rubber = BlenderMaterials.__nodeLegoRubberTranslucent(nodes, diffColour, 0, 5)
+            rubber = BlenderMaterials.__nodeLegoRubberTranslucent(
+                nodes, diffColour, 0, 5)
         else:
-            rubber = BlenderMaterials.__nodeLegoRubberSolid(nodes, diffColour, 0, 5)
+            rubber = BlenderMaterials.__nodeLegoRubberSolid(
+                nodes, diffColour, 0, 5)
 
         links.new(rubber.outputs[0], out.inputs[0])
 
@@ -2862,7 +3120,8 @@ class BlenderMaterials:
         # Direct colours are documented here: http://www.hassings.dk/l3/l3p.html
         linearRGBA = LegoColours.hexStringToLinearRGBA(colourName)
         if linearRGBA is None:
-            printWarningOnce("WARNING: Could not decode {0} to a colour".format(colourName))
+            printWarningOnce(
+                "WARNING: Could not decode {0} to a colour".format(colourName))
             return None
         return {
             "name":         colourName,
@@ -2898,10 +3157,12 @@ class BlenderMaterials:
 
         # Create new material
         col = BlenderMaterials.__getColourData(pureColourName)
-        material = BlenderMaterials.__createNodeBasedMaterial(blenderName, col, isSlopeMaterial)
+        material = BlenderMaterials.__createNodeBasedMaterial(
+            blenderName, col, isSlopeMaterial)
 
         if material is None:
-            printWarningOnce("Could not create material for blenderName {0}".format(blenderName))
+            printWarningOnce(
+                "Could not create material for blenderName {0}".format(blenderName))
 
         # Add material to cache
         BlenderMaterials.__material_list[colourName] = material
@@ -2936,33 +3197,47 @@ class BlenderMaterials:
             group.outputs.new('NodeSocketVectorDirection', 'Vector')
 
             # create nodes
-            node_texture_coordinate = BlenderMaterials.__nodeTexCoord(group.nodes, -730, 0)
+            node_texture_coordinate = BlenderMaterials.__nodeTexCoord(
+                group.nodes, -730, 0)
 
-            node_vector_subtraction1 = BlenderMaterials.__nodeVectorMath(group.nodes, 'SUBTRACT', -535, 0)
+            node_vector_subtraction1 = BlenderMaterials.__nodeVectorMath(
+                group.nodes, 'SUBTRACT', -535, 0)
             node_vector_subtraction1.inputs[1].default_value[0] = 0.5
             node_vector_subtraction1.inputs[1].default_value[1] = 0.5
             node_vector_subtraction1.inputs[1].default_value[2] = 0.5
 
-            node_normalize = BlenderMaterials.__nodeVectorMath(group.nodes, 'NORMALIZE', -535, -245)
-            node_dot_product = BlenderMaterials.__nodeVectorMath(group.nodes, 'DOT_PRODUCT', -340, -125)
+            node_normalize = BlenderMaterials.__nodeVectorMath(
+                group.nodes, 'NORMALIZE', -535, -245)
+            node_dot_product = BlenderMaterials.__nodeVectorMath(
+                group.nodes, 'DOT_PRODUCT', -340, -125)
 
             node_multiply = group.nodes.new('ShaderNodeMixRGB')
             node_multiply.blend_type = 'MULTIPLY'
             node_multiply.inputs['Fac'].default_value = 1.0
             node_multiply.location = -145, -125
 
-            node_vector_subtraction2 = BlenderMaterials.__nodeVectorMath(group.nodes, 'SUBTRACT', 40, 0)
+            node_vector_subtraction2 = BlenderMaterials.__nodeVectorMath(
+                group.nodes, 'SUBTRACT', 40, 0)
 
             # link nodes together
-            group.links.new(node_texture_coordinate.outputs['Generated'], node_vector_subtraction1.inputs[0])
-            group.links.new(node_texture_coordinate.outputs['Normal'], node_normalize.inputs[0])
-            group.links.new(node_vector_subtraction1.outputs['Vector'], node_dot_product.inputs[0])
-            group.links.new(node_normalize.outputs['Vector'], node_dot_product.inputs[1])
-            group.links.new(node_dot_product.outputs['Value'], node_multiply.inputs['Color1'])
-            group.links.new(node_normalize.outputs['Vector'], node_multiply.inputs['Color2'])
-            group.links.new(node_vector_subtraction1.outputs['Vector'], node_vector_subtraction2.inputs[0])
-            group.links.new(node_multiply.outputs['Color'], node_vector_subtraction2.inputs[1])
-            group.links.new(node_vector_subtraction2.outputs['Vector'], node_output.inputs['Vector'])
+            group.links.new(
+                node_texture_coordinate.outputs['Generated'], node_vector_subtraction1.inputs[0])
+            group.links.new(
+                node_texture_coordinate.outputs['Normal'], node_normalize.inputs[0])
+            group.links.new(
+                node_vector_subtraction1.outputs['Vector'], node_dot_product.inputs[0])
+            group.links.new(
+                node_normalize.outputs['Vector'], node_dot_product.inputs[1])
+            group.links.new(
+                node_dot_product.outputs['Value'], node_multiply.inputs['Color1'])
+            group.links.new(
+                node_normalize.outputs['Vector'], node_multiply.inputs['Color2'])
+            group.links.new(
+                node_vector_subtraction1.outputs['Vector'], node_vector_subtraction2.inputs[0])
+            group.links.new(
+                node_multiply.outputs['Color'], node_vector_subtraction2.inputs[1])
+            group.links.new(
+                node_vector_subtraction2.outputs['Vector'], node_output.inputs['Vector'])
 
     # **********************************************************************************
     def __createBlenderVectorElementPowerNodeGroup():
@@ -2979,32 +3254,52 @@ class BlenderMaterials:
             node_separate_xyz = group.nodes.new('ShaderNodeSeparateXYZ')
             node_separate_xyz.location = -385, -140
 
-            node_abs_x = BlenderMaterials.__nodeMath(group.nodes, 'ABSOLUTE', -180, 180)
-            node_abs_y = BlenderMaterials.__nodeMath(group.nodes, 'ABSOLUTE', -180, 0)
-            node_abs_z = BlenderMaterials.__nodeMath(group.nodes, 'ABSOLUTE', -180, -180)
+            node_abs_x = BlenderMaterials.__nodeMath(
+                group.nodes, 'ABSOLUTE', -180, 180)
+            node_abs_y = BlenderMaterials.__nodeMath(
+                group.nodes, 'ABSOLUTE', -180, 0)
+            node_abs_z = BlenderMaterials.__nodeMath(
+                group.nodes, 'ABSOLUTE', -180, -180)
 
-            node_power_x = BlenderMaterials.__nodeMath(group.nodes, 'POWER', 20, 180)
-            node_power_y = BlenderMaterials.__nodeMath(group.nodes, 'POWER', 20, 0)
-            node_power_z = BlenderMaterials.__nodeMath(group.nodes, 'POWER', 20, -180)
+            node_power_x = BlenderMaterials.__nodeMath(
+                group.nodes, 'POWER', 20, 180)
+            node_power_y = BlenderMaterials.__nodeMath(
+                group.nodes, 'POWER', 20, 0)
+            node_power_z = BlenderMaterials.__nodeMath(
+                group.nodes, 'POWER', 20, -180)
 
             node_combine_xyz = group.nodes.new('ShaderNodeCombineXYZ')
             node_combine_xyz.location = 215, 0
 
             # link nodes together
-            group.links.new(node_input.outputs['Vector'], node_separate_xyz.inputs[0])
-            group.links.new(node_separate_xyz.outputs['X'], node_abs_x.inputs[0])
-            group.links.new(node_separate_xyz.outputs['Y'], node_abs_y.inputs[0])
-            group.links.new(node_separate_xyz.outputs['Z'], node_abs_z.inputs[0])
-            group.links.new(node_abs_x.outputs['Value'], node_power_x.inputs[0])
-            group.links.new(node_input.outputs['Exponent'], node_power_x.inputs[1])
-            group.links.new(node_abs_y.outputs['Value'], node_power_y.inputs[0])
-            group.links.new(node_input.outputs['Exponent'], node_power_y.inputs[1])
-            group.links.new(node_abs_z.outputs['Value'], node_power_z.inputs[0])
-            group.links.new(node_input.outputs['Exponent'], node_power_z.inputs[1])
-            group.links.new(node_power_x.outputs['Value'], node_combine_xyz.inputs['X'])
-            group.links.new(node_power_y.outputs['Value'], node_combine_xyz.inputs['Y'])
-            group.links.new(node_power_z.outputs['Value'], node_combine_xyz.inputs['Z'])
-            group.links.new(node_combine_xyz.outputs['Vector'], node_output.inputs[0])
+            group.links.new(
+                node_input.outputs['Vector'], node_separate_xyz.inputs[0])
+            group.links.new(
+                node_separate_xyz.outputs['X'], node_abs_x.inputs[0])
+            group.links.new(
+                node_separate_xyz.outputs['Y'], node_abs_y.inputs[0])
+            group.links.new(
+                node_separate_xyz.outputs['Z'], node_abs_z.inputs[0])
+            group.links.new(
+                node_abs_x.outputs['Value'], node_power_x.inputs[0])
+            group.links.new(
+                node_input.outputs['Exponent'], node_power_x.inputs[1])
+            group.links.new(
+                node_abs_y.outputs['Value'], node_power_y.inputs[0])
+            group.links.new(
+                node_input.outputs['Exponent'], node_power_y.inputs[1])
+            group.links.new(
+                node_abs_z.outputs['Value'], node_power_z.inputs[0])
+            group.links.new(
+                node_input.outputs['Exponent'], node_power_z.inputs[1])
+            group.links.new(
+                node_power_x.outputs['Value'], node_combine_xyz.inputs['X'])
+            group.links.new(
+                node_power_y.outputs['Value'], node_combine_xyz.inputs['Y'])
+            group.links.new(
+                node_power_z.outputs['Value'], node_combine_xyz.inputs['Z'])
+            group.links.new(
+                node_combine_xyz.outputs['Vector'], node_output.inputs[0])
 
     # **********************************************************************************
     def __createBlenderConvertToNormalsNodeGroup():
@@ -3020,7 +3315,8 @@ class BlenderMaterials:
             group.outputs.new('NodeSocketVectorDirection', 'Normal')
 
             # create nodes
-            node_power = BlenderMaterials.__nodeMath(group.nodes, 'POWER', -290, 150)
+            node_power = BlenderMaterials.__nodeMath(
+                group.nodes, 'POWER', -290, 150)
 
             node_colorramp = group.nodes.new('ShaderNodeValToRGB')
             node_colorramp.color_ramp.color_mode = 'RGB'
@@ -3035,12 +3331,18 @@ class BlenderMaterials:
             node_bump.location = 200, 0
 
             # link nodes together
-            group.links.new(node_input.outputs['Vector Length'], node_power.inputs[0])
-            group.links.new(node_input.outputs['Smoothing'], node_power.inputs[1])
-            group.links.new(node_power.outputs['Value'], node_colorramp.inputs[0])
-            group.links.new(node_input.outputs['Strength'], node_bump.inputs['Strength'])
-            group.links.new(node_colorramp.outputs['Color'], node_bump.inputs['Height'])
-            group.links.new(node_input.outputs['Normal'], node_bump.inputs['Normal'])
+            group.links.new(
+                node_input.outputs['Vector Length'], node_power.inputs[0])
+            group.links.new(
+                node_input.outputs['Smoothing'], node_power.inputs[1])
+            group.links.new(
+                node_power.outputs['Value'], node_colorramp.inputs[0])
+            group.links.new(
+                node_input.outputs['Strength'], node_bump.inputs['Strength'])
+            group.links.new(
+                node_colorramp.outputs['Color'], node_bump.inputs['Height'])
+            group.links.new(
+                node_input.outputs['Normal'], node_bump.inputs['Normal'])
             group.links.new(node_bump.outputs['Normal'], node_output.inputs[0])
 
     # **********************************************************************************
@@ -3048,7 +3350,8 @@ class BlenderMaterials:
         if bpy.data.node_groups.get('Concave Walls') is None:
             debugPrint("createBlenderConcaveWallsNodeGroup #create")
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup('Concave Walls', -530, 0, 300, 0, False)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                'Concave Walls', -530, 0, 300, 0, False)
             group.inputs.new('NodeSocketFloat', 'Strength')
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
             group.outputs.new('NodeSocketVectorDirection', 'Normal')
@@ -3070,35 +3373,48 @@ class BlenderMaterials:
             node_convert_to_normals.inputs['Smoothing'].default_value = 0.3
 
             # link nodes together
-            group.links.new(node_distance_to_center.outputs['Vector'], node_vector_elements_power.inputs['Vector'])
+            group.links.new(
+                node_distance_to_center.outputs['Vector'], node_vector_elements_power.inputs['Vector'])
             group.links.new(node_vector_elements_power.outputs['Vector'],
                             node_convert_to_normals.inputs['Vector Length'])
-            group.links.new(node_input.outputs['Strength'], node_convert_to_normals.inputs['Strength'])
-            group.links.new(node_input.outputs['Normal'], node_convert_to_normals.inputs['Normal'])
-            group.links.new(node_convert_to_normals.outputs['Normal'], node_output.inputs['Normal'])
+            group.links.new(
+                node_input.outputs['Strength'], node_convert_to_normals.inputs['Strength'])
+            group.links.new(
+                node_input.outputs['Normal'], node_convert_to_normals.inputs['Normal'])
+            group.links.new(
+                node_convert_to_normals.outputs['Normal'], node_output.inputs['Normal'])
 
     # **********************************************************************************
     def __createBlenderSlopeTextureNodeGroup():
         if bpy.data.node_groups.get('Slope Texture') is None:
             debugPrint("createBlenderSlopeTextureNodeGroup #create")
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup('Slope Texture', -530, 0, 300, 0, False)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                'Slope Texture', -530, 0, 300, 0, False)
             group.inputs.new('NodeSocketFloat', 'Strength')
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
             group.outputs.new('NodeSocketVectorDirection', 'Normal')
 
             # create nodes
-            node_texture_coordinate = BlenderMaterials.__nodeTexCoord(group.nodes, -300, 240)
-            node_voronoi = BlenderMaterials.__nodeVoronoi(group.nodes, 3.0 / Options.scale, -100, 155)
-            node_bump = BlenderMaterials.__nodeBumpShader(group.nodes, 0.3, 0.08, 90, 50)
+            node_texture_coordinate = BlenderMaterials.__nodeTexCoord(
+                group.nodes, -300, 240)
+            node_voronoi = BlenderMaterials.__nodeVoronoi(
+                group.nodes, 3.0 / Options.scale, -100, 155)
+            node_bump = BlenderMaterials.__nodeBumpShader(
+                group.nodes, 0.3, 0.08, 90, 50)
             node_bump.invert = True
 
             # link nodes together
-            group.links.new(node_texture_coordinate.outputs['Object'], node_voronoi.inputs['Vector'])
-            group.links.new(node_voronoi.outputs['Distance'], node_bump.inputs['Height'])
-            group.links.new(node_input.outputs['Strength'], node_bump.inputs['Strength'])
-            group.links.new(node_input.outputs['Normal'], node_bump.inputs['Normal'])
-            group.links.new(node_bump.outputs['Normal'], node_output.inputs['Normal'])
+            group.links.new(
+                node_texture_coordinate.outputs['Object'], node_voronoi.inputs['Vector'])
+            group.links.new(
+                node_voronoi.outputs['Distance'], node_bump.inputs['Height'])
+            group.links.new(
+                node_input.outputs['Strength'], node_bump.inputs['Strength'])
+            group.links.new(
+                node_input.outputs['Normal'], node_bump.inputs['Normal'])
+            group.links.new(
+                node_bump.outputs['Normal'], node_output.inputs['Normal'])
 
     # **********************************************************************************
     def __createBlenderFresnelNodeGroup():
@@ -3128,20 +3444,35 @@ class BlenderMaterials:
             # node_geom.hide = True
 
             # link nodes together
-            group.links.new(node_input.outputs['Roughness'],   node_mix.inputs['Fac'])       # Input Roughness -> Mix Fac
-            group.links.new(node_input.outputs['IOR'],         node_fres.inputs['IOR'])      # Input IOR -> Fres IOR
-            group.links.new(node_input.outputs['Normal'],      node_bump.inputs['Normal'])   # Input Normal -> Bump Normal
-            group.links.new(node_bump.outputs['Normal'],       node_mix.inputs['Color1'])    # Bump Normal -> Mix Color1
-            group.links.new(node_geom.outputs['Incoming'],     node_mix.inputs['Color2'])    # Geom Incoming -> Mix Colour2
-            group.links.new(node_mix.outputs['Color'],         node_fres.inputs['Normal'])   # Mix Color -> Fres Normal
-            group.links.new(node_fres.outputs['Fac'],          node_output.inputs['Fresnel Factor']) # Fres Fac -> Group Output Fresnel Factor
+            # Input Roughness -> Mix Fac
+            group.links.new(
+                node_input.outputs['Roughness'],   node_mix.inputs['Fac'])
+            # Input IOR -> Fres IOR
+            group.links.new(
+                node_input.outputs['IOR'],         node_fres.inputs['IOR'])
+            # Input Normal -> Bump Normal
+            group.links.new(
+                node_input.outputs['Normal'],      node_bump.inputs['Normal'])
+            # Bump Normal -> Mix Color1
+            group.links.new(
+                node_bump.outputs['Normal'],       node_mix.inputs['Color1'])
+            # Geom Incoming -> Mix Colour2
+            group.links.new(
+                node_geom.outputs['Incoming'],     node_mix.inputs['Color2'])
+            # Mix Color -> Fres Normal
+            group.links.new(
+                node_mix.outputs['Color'],         node_fres.inputs['Normal'])
+            # Fres Fac -> Group Output Fresnel Factor
+            group.links.new(
+                node_fres.outputs['Fac'],          node_output.inputs['Fresnel Factor'])
 
     # **********************************************************************************
     def __createBlenderReflectionNodeGroup():
         if bpy.data.node_groups.get('PBR-Reflection') is None:
             debugPrint("createBlenderReflectionNodeGroup #create")
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup('PBR-Reflection', -530, 0, 300, 0, True)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                'PBR-Reflection', -530, 0, 300, 0, True)
             group.inputs.new('NodeSocketShader', 'Shader')
             group.inputs.new('NodeSocketFloatFactor', 'Roughness')
             group.inputs.new('NodeSocketFloatFactor', 'Reflection')
@@ -3164,24 +3495,36 @@ class BlenderMaterials:
             node_glossy.location = (-290, -95)
 
             # link nodes together
-            group.links.new(node_input.outputs['Shader'],       node_mix_shader.inputs[1])
-            group.links.new(node_input.outputs['Roughness'],    node_fresnel_roughness.inputs['Roughness'])
-            group.links.new(node_input.outputs['Roughness'],    node_glossy.inputs['Roughness'])
-            group.links.new(node_input.outputs['Reflection'],   node_mixrgb.inputs['Color1'])
-            group.links.new(node_input.outputs['IOR'],          node_fresnel_roughness.inputs['IOR'])
-            group.links.new(node_input.outputs['Normal'],       node_fresnel_roughness.inputs['Normal'])
-            group.links.new(node_input.outputs['Normal'],       node_glossy.inputs['Normal'])
-            group.links.new(node_fresnel_roughness.outputs[0],  node_mixrgb.inputs[0])
-            group.links.new(node_mixrgb.outputs[0],             node_mix_shader.inputs[0])
-            group.links.new(node_glossy.outputs[0],             node_mix_shader.inputs[2])
-            group.links.new(node_mix_shader.outputs[0],         node_output.inputs['Shader'])
+            group.links.new(
+                node_input.outputs['Shader'],       node_mix_shader.inputs[1])
+            group.links.new(
+                node_input.outputs['Roughness'],    node_fresnel_roughness.inputs['Roughness'])
+            group.links.new(
+                node_input.outputs['Roughness'],    node_glossy.inputs['Roughness'])
+            group.links.new(
+                node_input.outputs['Reflection'],   node_mixrgb.inputs['Color1'])
+            group.links.new(
+                node_input.outputs['IOR'],          node_fresnel_roughness.inputs['IOR'])
+            group.links.new(
+                node_input.outputs['Normal'],       node_fresnel_roughness.inputs['Normal'])
+            group.links.new(
+                node_input.outputs['Normal'],       node_glossy.inputs['Normal'])
+            group.links.new(
+                node_fresnel_roughness.outputs[0],  node_mixrgb.inputs[0])
+            group.links.new(
+                node_mixrgb.outputs[0],             node_mix_shader.inputs[0])
+            group.links.new(
+                node_glossy.outputs[0],             node_mix_shader.inputs[2])
+            group.links.new(
+                node_mix_shader.outputs[0],         node_output.inputs['Shader'])
 
     # **********************************************************************************
     def __createBlenderDielectricNodeGroup():
         if bpy.data.node_groups.get('PBR-Dielectric') is None:
             debugPrint("createBlenderDielectricNodeGroup #create")
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup('PBR-Dielectric', -530, 70, 500, 0, True)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                'PBR-Dielectric', -530, 70, 500, 0, True)
             group.inputs.new('NodeSocketColor', 'Color')
             group.inputs.new('NodeSocketFloatFactor', 'Roughness')
             group.inputs.new('NodeSocketFloatFactor', 'Reflection')
@@ -3208,7 +3551,8 @@ class BlenderMaterials:
             node_reflection.node_tree = bpy.data.node_groups['PBR-Reflection']
             node_reflection.location = (100, 115)
 
-            node_power = BlenderMaterials.__nodeMath(group.nodes, 'POWER', -330, -105)
+            node_power = BlenderMaterials.__nodeMath(
+                group.nodes, 'POWER', -330, -105)
             node_power.inputs[1].default_value = 2.0
 
             node_glass = group.nodes.new('ShaderNodeBsdfGlass')
@@ -3218,23 +3562,40 @@ class BlenderMaterials:
             node_mix_shader.location = (300, 5)
 
             # link nodes together
-            group.links.new(node_input.outputs['Color'],        node_diffuse.inputs['Color'])
-            group.links.new(node_input.outputs['Roughness'],    node_power.inputs[0])
-            group.links.new(node_input.outputs['Reflection'],   node_reflection.inputs['Reflection'])
-            group.links.new(node_input.outputs['IOR'],          node_reflection.inputs['IOR'])
-            group.links.new(node_input.outputs['Normal'],       node_diffuse.inputs['Normal'])
-            group.links.new(node_input.outputs['Normal'],       node_reflection.inputs['Normal'])
-            group.links.new(node_power.outputs[0],              node_diffuse.inputs['Roughness'])
-            group.links.new(node_power.outputs[0],              node_reflection.inputs['Roughness'])
-            group.links.new(node_diffuse.outputs[0],            node_reflection.inputs['Shader'])
-            group.links.new(node_reflection.outputs['Shader'],  node_mix_shader.inputs['Shader'])
-            group.links.new(node_input.outputs['Color'],        node_glass.inputs['Color'])
-            group.links.new(node_input.outputs['IOR'],          node_glass.inputs['IOR'])
-            group.links.new(node_input.outputs['Normal'],       node_glass.inputs['Normal'])
-            group.links.new(node_power.outputs[0],              node_glass.inputs['Roughness'])
-            group.links.new(node_input.outputs['Transparency'], node_mix_shader.inputs[0])
-            group.links.new(node_glass.outputs[0],              node_mix_shader.inputs[2])
-            group.links.new(node_mix_shader.outputs['Shader'],  node_output.inputs['Shader'])
+            group.links.new(
+                node_input.outputs['Color'],        node_diffuse.inputs['Color'])
+            group.links.new(
+                node_input.outputs['Roughness'],    node_power.inputs[0])
+            group.links.new(
+                node_input.outputs['Reflection'],   node_reflection.inputs['Reflection'])
+            group.links.new(
+                node_input.outputs['IOR'],          node_reflection.inputs['IOR'])
+            group.links.new(
+                node_input.outputs['Normal'],       node_diffuse.inputs['Normal'])
+            group.links.new(
+                node_input.outputs['Normal'],       node_reflection.inputs['Normal'])
+            group.links.new(node_power.outputs[0],
+                            node_diffuse.inputs['Roughness'])
+            group.links.new(node_power.outputs[0],
+                            node_reflection.inputs['Roughness'])
+            group.links.new(
+                node_diffuse.outputs[0],            node_reflection.inputs['Shader'])
+            group.links.new(
+                node_reflection.outputs['Shader'],  node_mix_shader.inputs['Shader'])
+            group.links.new(
+                node_input.outputs['Color'],        node_glass.inputs['Color'])
+            group.links.new(
+                node_input.outputs['IOR'],          node_glass.inputs['IOR'])
+            group.links.new(
+                node_input.outputs['Normal'],       node_glass.inputs['Normal'])
+            group.links.new(node_power.outputs[0],
+                            node_glass.inputs['Roughness'])
+            group.links.new(
+                node_input.outputs['Transparency'], node_mix_shader.inputs[0])
+            group.links.new(node_glass.outputs[0],
+                            node_mix_shader.inputs[2])
+            group.links.new(
+                node_mix_shader.outputs['Shader'],  node_output.inputs['Shader'])
 
     # **********************************************************************************
     def __createBlenderLegoStandardNodeGroup():
@@ -3242,14 +3603,18 @@ class BlenderMaterials:
         if bpy.data.node_groups.get(groupName) is None:
             debugPrint("createBlenderLegoStandardNodeGroup #create")
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup(groupName, -250, 0, 250, 0, True)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                groupName, -250, 0, 250, 0, True)
             group.inputs.new('NodeSocketColor', 'Color')
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
 
             if Options.instructionsLook:
-                node_emission = BlenderMaterials.__nodeEmission(group.nodes, 0, 0)
-                group.links.new(node_input.outputs['Color'], node_emission.inputs['Color'])
-                group.links.new(node_emission.outputs['Emission'], node_output.inputs['Shader'])
+                node_emission = BlenderMaterials.__nodeEmission(
+                    group.nodes, 0, 0)
+                group.links.new(
+                    node_input.outputs['Color'], node_emission.inputs['Color'])
+                group.links.new(
+                    node_emission.outputs['Emission'], node_output.inputs['Shader'])
             else:
                 if BlenderMaterials.usePrincipledShader:
                     node_main = BlenderMaterials.__nodePrincipled(group.nodes, 0.05, 0.05, 0.0, 0.1, 0.0, 0.0, 1.45,
@@ -3257,16 +3622,21 @@ class BlenderMaterials:
                     output_name = 'BSDF'
                     color_name = 'Base Color'
                     if Options.addSubsurface:
-                        group.links.new(node_input.outputs['Color'], node_main.inputs['Subsurface Color'])
+                        group.links.new(
+                            node_input.outputs['Color'], node_main.inputs['Subsurface Color'])
                 else:
-                    node_main = BlenderMaterials.__nodeDielectric(group.nodes, 0.2, 0.1, 0.0, 1.46, 0, 0)
+                    node_main = BlenderMaterials.__nodeDielectric(
+                        group.nodes, 0.2, 0.1, 0.0, 1.46, 0, 0)
                     output_name = 'Shader'
                     color_name = 'Color'
 
                 # link nodes together
-                group.links.new(node_input.outputs['Color'],        node_main.inputs[color_name])
-                group.links.new(node_input.outputs['Normal'],       node_main.inputs['Normal'])
-                group.links.new(node_main.outputs[output_name],     node_output.inputs['Shader'])
+                group.links.new(
+                    node_input.outputs['Color'],        node_main.inputs[color_name])
+                group.links.new(
+                    node_input.outputs['Normal'],       node_main.inputs['Normal'])
+                group.links.new(
+                    node_main.outputs[output_name],     node_output.inputs['Shader'])
 
     # **********************************************************************************
     def __createBlenderLegoTransparentNodeGroup():
@@ -3274,96 +3644,148 @@ class BlenderMaterials:
         if bpy.data.node_groups.get(groupName) is None:
             debugPrint("createBlenderLegoTransparentNodeGroup #create")
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup(groupName, -250, 0, 250, 0, True)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                groupName, -250, 0, 250, 0, True)
             group.inputs.new('NodeSocketColor', 'Color')
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
 
             if Options.instructionsLook:
-                node_emission    = BlenderMaterials.__nodeEmission(group.nodes, 0, 0)
-                node_transparent = BlenderMaterials.__nodeTransparent(group.nodes, 0, 100)
-                node_mix1        = BlenderMaterials.__nodeMix(group.nodes, 0.5, 400, 100)
-                node_light       = BlenderMaterials.__nodeLightPath(group.nodes, 200, 400)
-                node_less        = BlenderMaterials.__nodeMath(group.nodes, 'LESS_THAN', 400, 400)
-                node_mix2        = BlenderMaterials.__nodeMix(group.nodes, 0.5, 600, 300)
+                node_emission = BlenderMaterials.__nodeEmission(
+                    group.nodes, 0, 0)
+                node_transparent = BlenderMaterials.__nodeTransparent(
+                    group.nodes, 0, 100)
+                node_mix1 = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.5, 400, 100)
+                node_light = BlenderMaterials.__nodeLightPath(
+                    group.nodes, 200, 400)
+                node_less = BlenderMaterials.__nodeMath(
+                    group.nodes, 'LESS_THAN', 400, 400)
+                node_mix2 = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.5, 600, 300)
 
                 node_output.location = (800, 0)
 
-                group.links.new(node_input.outputs['Color'],                node_emission.inputs['Color'])
-                group.links.new(node_transparent.outputs[0],                node_mix1.inputs[1])
-                group.links.new(node_emission.outputs['Emission'],          node_mix1.inputs[2])
-                group.links.new(node_transparent.outputs[0],                node_mix2.inputs[1])
-                group.links.new(node_mix1.outputs[0],                       node_mix2.inputs[2])
-                group.links.new(node_light.outputs['Transparent Depth'],    node_less.inputs[0])
-                group.links.new(node_less.outputs[0],                       node_mix2.inputs['Fac'])
-                group.links.new(node_mix2.outputs[0],                       node_output.inputs['Shader'])
+                group.links.new(
+                    node_input.outputs['Color'],                node_emission.inputs['Color'])
+                group.links.new(
+                    node_transparent.outputs[0],                node_mix1.inputs[1])
+                group.links.new(
+                    node_emission.outputs['Emission'],          node_mix1.inputs[2])
+                group.links.new(
+                    node_transparent.outputs[0],                node_mix2.inputs[1])
+                group.links.new(
+                    node_mix1.outputs[0],                       node_mix2.inputs[2])
+                group.links.new(
+                    node_light.outputs['Transparent Depth'],    node_less.inputs[0])
+                group.links.new(node_less.outputs[0],
+                                node_mix2.inputs['Fac'])
+                group.links.new(node_mix2.outputs[0],
+                                node_output.inputs['Shader'])
             else:
                 if BlenderMaterials.usePrincipledShader:
                     node_principled = BlenderMaterials.__nodePrincipled(group.nodes, 0.0, 0.0, 0.0, 0.05, 0.0, 0.0,
                                                                         1.585, 1.0, 45, 340)
 
                     # link nodes together
-                    group.links.new(node_input.outputs['Color'],       node_principled.inputs['Base Color'])
-                    group.links.new(node_input.outputs['Normal'],      node_principled.inputs['Normal'])
-                    group.links.new(node_principled.outputs['BSDF'],   node_output.inputs['Shader'])
+                    group.links.new(
+                        node_input.outputs['Color'],       node_principled.inputs['Base Color'])
+                    group.links.new(
+                        node_input.outputs['Normal'],      node_principled.inputs['Normal'])
+                    group.links.new(
+                        node_principled.outputs['BSDF'],   node_output.inputs['Shader'])
                 else:
-                    node_main = BlenderMaterials.__nodeDielectric(group.nodes, 0.15, 0.1, 0.97, 1.46, 0, 0)
+                    node_main = BlenderMaterials.__nodeDielectric(
+                        group.nodes, 0.15, 0.1, 0.97, 1.46, 0, 0)
 
                     # link nodes together
-                    group.links.new(node_input.outputs['Color'],       node_main.inputs['Color'])
-                    group.links.new(node_input.outputs['Normal'],      node_main.inputs['Normal'])
-                    group.links.new(node_main.outputs['Shader'],       node_output.inputs['Shader'])
+                    group.links.new(
+                        node_input.outputs['Color'],       node_main.inputs['Color'])
+                    group.links.new(
+                        node_input.outputs['Normal'],      node_main.inputs['Normal'])
+                    group.links.new(
+                        node_main.outputs['Shader'],       node_output.inputs['Shader'])
 
     # **********************************************************************************
     def __createBlenderLegoTransparentFluorescentNodeGroup():
-        groupName = BlenderMaterials.__getGroupName('Lego Transparent Fluorescent')
+        groupName = BlenderMaterials.__getGroupName(
+            'Lego Transparent Fluorescent')
         if bpy.data.node_groups.get(groupName) is None:
-            debugPrint("createBlenderLegoTransparentFluorescentNodeGroup #create")
+            debugPrint(
+                "createBlenderLegoTransparentFluorescentNodeGroup #create")
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup(groupName, -250, 0, 250, 0, True)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                groupName, -250, 0, 250, 0, True)
             group.inputs.new('NodeSocketColor', 'Color')
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
 
             if Options.instructionsLook:
-                node_emission    = BlenderMaterials.__nodeEmission(group.nodes, 0, 0)
-                node_transparent = BlenderMaterials.__nodeTransparent(group.nodes, 0, 100)
-                node_mix1        = BlenderMaterials.__nodeMix(group.nodes, 0.5, 400, 100)
-                node_light       = BlenderMaterials.__nodeLightPath(group.nodes, 200, 400)
-                node_less        = BlenderMaterials.__nodeMath(group.nodes, 'LESS_THAN', 400, 400)
-                node_mix2        = BlenderMaterials.__nodeMix(group.nodes, 0.5, 600, 300)
+                node_emission = BlenderMaterials.__nodeEmission(
+                    group.nodes, 0, 0)
+                node_transparent = BlenderMaterials.__nodeTransparent(
+                    group.nodes, 0, 100)
+                node_mix1 = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.5, 400, 100)
+                node_light = BlenderMaterials.__nodeLightPath(
+                    group.nodes, 200, 400)
+                node_less = BlenderMaterials.__nodeMath(
+                    group.nodes, 'LESS_THAN', 400, 400)
+                node_mix2 = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.5, 600, 300)
 
                 node_output.location = (800, 0)
 
-                group.links.new(node_input.outputs['Color'],                node_emission.inputs['Color'])
-                group.links.new(node_transparent.outputs[0],                node_mix1.inputs[1])
-                group.links.new(node_emission.outputs['Emission'],          node_mix1.inputs[2])
-                group.links.new(node_transparent.outputs[0],                node_mix2.inputs[1])
-                group.links.new(node_mix1.outputs[0],                       node_mix2.inputs[2])
-                group.links.new(node_light.outputs['Transparent Depth'],    node_less.inputs[0])
-                group.links.new(node_less.outputs[0],                       node_mix2.inputs['Fac'])
-                group.links.new(node_mix2.outputs[0],                       node_output.inputs['Shader'])
+                group.links.new(
+                    node_input.outputs['Color'],                node_emission.inputs['Color'])
+                group.links.new(
+                    node_transparent.outputs[0],                node_mix1.inputs[1])
+                group.links.new(
+                    node_emission.outputs['Emission'],          node_mix1.inputs[2])
+                group.links.new(
+                    node_transparent.outputs[0],                node_mix2.inputs[1])
+                group.links.new(
+                    node_mix1.outputs[0],                       node_mix2.inputs[2])
+                group.links.new(
+                    node_light.outputs['Transparent Depth'],    node_less.inputs[0])
+                group.links.new(node_less.outputs[0],
+                                node_mix2.inputs['Fac'])
+                group.links.new(node_mix2.outputs[0],
+                                node_output.inputs['Shader'])
             else:
                 if BlenderMaterials.usePrincipledShader:
-                    node_principled  = BlenderMaterials.__nodePrincipled(group.nodes, 0.0, 0.0, 0.0, 0.05, 0.0, 0.0, 1.585, 1.0, 45, 340)
-                    node_emission    = BlenderMaterials.__nodeEmission(group.nodes, 45, -160)
-                    node_mix         = BlenderMaterials.__nodeMix(group.nodes, 0.03, 300, 290)
+                    node_principled = BlenderMaterials.__nodePrincipled(
+                        group.nodes, 0.0, 0.0, 0.0, 0.05, 0.0, 0.0, 1.585, 1.0, 45, 340)
+                    node_emission = BlenderMaterials.__nodeEmission(
+                        group.nodes, 45, -160)
+                    node_mix = BlenderMaterials.__nodeMix(
+                        group.nodes, 0.03, 300, 290)
 
                     node_output.location = 500, 290
 
                     # link nodes together
-                    group.links.new(node_input.outputs['Color'],       node_principled.inputs['Base Color'])
-                    group.links.new(node_input.outputs['Color'],       node_emission.inputs['Color'])
-                    group.links.new(node_input.outputs['Normal'],      node_principled.inputs['Normal'])
-                    group.links.new(node_principled.outputs['BSDF'],   node_mix.inputs[1])
-                    group.links.new(node_emission.outputs['Emission'], node_mix.inputs[2])
-                    group.links.new(node_mix.outputs[0],               node_output.inputs['Shader'])
+                    group.links.new(
+                        node_input.outputs['Color'],       node_principled.inputs['Base Color'])
+                    group.links.new(
+                        node_input.outputs['Color'],       node_emission.inputs['Color'])
+                    group.links.new(
+                        node_input.outputs['Normal'],      node_principled.inputs['Normal'])
+                    group.links.new(
+                        node_principled.outputs['BSDF'],   node_mix.inputs[1])
+                    group.links.new(
+                        node_emission.outputs['Emission'], node_mix.inputs[2])
+                    group.links.new(
+                        node_mix.outputs[0],               node_output.inputs['Shader'])
 
                 else:
-                    node_main = BlenderMaterials.__nodeDielectric(group.nodes, 0.15, 0.1, 0.97, 1.46, 0, 0)
+                    node_main = BlenderMaterials.__nodeDielectric(
+                        group.nodes, 0.15, 0.1, 0.97, 1.46, 0, 0)
 
                     # link nodes together
-                    group.links.new(node_input.outputs['Color'],       node_main.inputs['Color'])
-                    group.links.new(node_input.outputs['Normal'],      node_main.inputs['Normal'])
-                    group.links.new(node_main.outputs['Shader'],       node_output.inputs['Shader'])
+                    group.links.new(
+                        node_input.outputs['Color'],       node_main.inputs['Color'])
+                    group.links.new(
+                        node_input.outputs['Normal'],      node_main.inputs['Normal'])
+                    group.links.new(
+                        node_main.outputs['Shader'],       node_output.inputs['Shader'])
 
     # **********************************************************************************
     def __createBlenderLegoRubberNodeGroup():
@@ -3377,28 +3799,42 @@ class BlenderMaterials:
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
 
             if BlenderMaterials.usePrincipledShader:
-                node_noise = BlenderMaterials.__nodeNoiseTexture(group.nodes, 250, 2, 0.0, 45 - 770, 340 - 200)
-                node_bump1 = BlenderMaterials.__nodeBumpShader(group.nodes, 1.0, 0.3, 45 - 366, 340 - 200)
-                node_bump2 = BlenderMaterials.__nodeBumpShader(group.nodes, 1.0, 0.1, 45 - 184, 340 - 115)
-                node_subtract = BlenderMaterials.__nodeMath(group.nodes, 'SUBTRACT', 45 - 570, 340 - 216)
+                node_noise = BlenderMaterials.__nodeNoiseTexture(
+                    group.nodes, 250, 2, 0.0, 45 - 770, 340 - 200)
+                node_bump1 = BlenderMaterials.__nodeBumpShader(
+                    group.nodes, 1.0, 0.3, 45 - 366, 340 - 200)
+                node_bump2 = BlenderMaterials.__nodeBumpShader(
+                    group.nodes, 1.0, 0.1, 45 - 184, 340 - 115)
+                node_subtract = BlenderMaterials.__nodeMath(
+                    group.nodes, 'SUBTRACT', 45 - 570, 340 - 216)
                 node_principled = BlenderMaterials.__nodePrincipled(group.nodes, 0.0, 0.0, 0.0, 0.4, 0.03, 0.0, 1.45,
                                                                     0.0, 45, 340)
 
                 node_subtract.inputs[1].default_value = 0.4
 
-                group.links.new(node_input.outputs['Color'],       node_principled.inputs['Base Color'])
-                group.links.new(node_principled.outputs['BSDF'],   node_output.inputs[0])
-                group.links.new(node_noise.outputs['Color'],       node_subtract.inputs[0])
-                group.links.new(node_subtract.outputs[0],          node_bump1.inputs['Height'])
-                group.links.new(node_bump1.outputs['Normal'],      node_bump2.inputs['Normal'])
-                group.links.new(node_bump2.outputs['Normal'],      node_principled.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Color'],       node_principled.inputs['Base Color'])
+                group.links.new(
+                    node_principled.outputs['BSDF'],   node_output.inputs[0])
+                group.links.new(
+                    node_noise.outputs['Color'],       node_subtract.inputs[0])
+                group.links.new(
+                    node_subtract.outputs[0],          node_bump1.inputs['Height'])
+                group.links.new(
+                    node_bump1.outputs['Normal'],      node_bump2.inputs['Normal'])
+                group.links.new(
+                    node_bump2.outputs['Normal'],      node_principled.inputs['Normal'])
             else:
-                node_dielectric = BlenderMaterials.__nodeDielectric(group.nodes, 0.5, 0.07, 0.0, 1.52, 0, 0)
+                node_dielectric = BlenderMaterials.__nodeDielectric(
+                    group.nodes, 0.5, 0.07, 0.0, 1.52, 0, 0)
 
                 # link nodes together
-                group.links.new(node_input.outputs['Color'],       node_dielectric.inputs['Color'])
-                group.links.new(node_input.outputs['Normal'],      node_dielectric.inputs['Normal'])
-                group.links.new(node_dielectric.outputs['Shader'], node_output.inputs['Shader'])
+                group.links.new(
+                    node_input.outputs['Color'],       node_dielectric.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Normal'],      node_dielectric.inputs['Normal'])
+                group.links.new(
+                    node_dielectric.outputs['Shader'], node_output.inputs['Shader'])
 
     # **********************************************************************************
     def __createBlenderLegoRubberTranslucentNodeGroup():
@@ -3406,41 +3842,62 @@ class BlenderMaterials:
         if bpy.data.node_groups.get(groupName) is None:
             debugPrint("createBlenderLegoRubberTranslucentNodeGroup #create")
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup(groupName, -250, 0, 250, 0, True)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                groupName, -250, 0, 250, 0, True)
             group.inputs.new('NodeSocketColor', 'Color')
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
 
             if BlenderMaterials.usePrincipledShader:
-                node_noise = BlenderMaterials.__nodeNoiseTexture(group.nodes, 250, 2, 0.0, 45 - 770, 340 - 200)
-                node_bump1 = BlenderMaterials.__nodeBumpShader(group.nodes, 1.0, 0.3, 45 - 366, 340 - 200)
-                node_bump2 = BlenderMaterials.__nodeBumpShader(group.nodes, 1.0, 0.1, 45 - 184, 340 - 115)
-                node_subtract = BlenderMaterials.__nodeMath(group.nodes, 'SUBTRACT', 45 - 570, 340 - 216)
+                node_noise = BlenderMaterials.__nodeNoiseTexture(
+                    group.nodes, 250, 2, 0.0, 45 - 770, 340 - 200)
+                node_bump1 = BlenderMaterials.__nodeBumpShader(
+                    group.nodes, 1.0, 0.3, 45 - 366, 340 - 200)
+                node_bump2 = BlenderMaterials.__nodeBumpShader(
+                    group.nodes, 1.0, 0.1, 45 - 184, 340 - 115)
+                node_subtract = BlenderMaterials.__nodeMath(
+                    group.nodes, 'SUBTRACT', 45 - 570, 340 - 216)
                 node_principled = BlenderMaterials.__nodePrincipled(group.nodes, 0.0, 0.0, 0.0, 0.4, 0.03, 0.0, 1.45,
                                                                     0.0, 45, 340)
-                node_mix = BlenderMaterials.__nodeMix(group.nodes, 0.8, 300, 290)
-                node_refraction = BlenderMaterials.__nodeRefraction(group.nodes, 0.0, 1.45, 290 - 242, 154 - 330)
+                node_mix = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.8, 300, 290)
+                node_refraction = BlenderMaterials.__nodeRefraction(
+                    group.nodes, 0.0, 1.45, 290 - 242, 154 - 330)
                 node_input.location = -320, 290
                 node_output.location = 530, 285
 
                 node_subtract.inputs[1].default_value = 0.4
 
-                group.links.new(node_input.outputs['Normal'],      node_refraction.inputs['Normal'])
-                group.links.new(node_refraction.outputs[0],        node_mix.inputs[2])
-                group.links.new(node_principled.outputs[0],        node_mix.inputs[1])
-                group.links.new(node_mix.outputs[0],               node_output.inputs[0])
-                group.links.new(node_input.outputs['Color'],       node_principled.inputs['Base Color'])
-                group.links.new(node_noise.outputs['Color'],       node_subtract.inputs[0])
-                group.links.new(node_subtract.outputs[0],          node_bump1.inputs['Height'])
-                group.links.new(node_bump1.outputs['Normal'],      node_bump2.inputs['Normal'])
-                group.links.new(node_bump2.outputs['Normal'],      node_principled.inputs['Normal'])
-                group.links.new(node_mix.outputs[0],               node_output.inputs[0])
+                group.links.new(
+                    node_input.outputs['Normal'],      node_refraction.inputs['Normal'])
+                group.links.new(
+                    node_refraction.outputs[0],        node_mix.inputs[2])
+                group.links.new(
+                    node_principled.outputs[0],        node_mix.inputs[1])
+                group.links.new(
+                    node_mix.outputs[0],               node_output.inputs[0])
+                group.links.new(
+                    node_input.outputs['Color'],       node_principled.inputs['Base Color'])
+                group.links.new(
+                    node_noise.outputs['Color'],       node_subtract.inputs[0])
+                group.links.new(
+                    node_subtract.outputs[0],          node_bump1.inputs['Height'])
+                group.links.new(
+                    node_bump1.outputs['Normal'],      node_bump2.inputs['Normal'])
+                group.links.new(
+                    node_bump2.outputs['Normal'],      node_principled.inputs['Normal'])
+                group.links.new(
+                    node_mix.outputs[0],               node_output.inputs[0])
             else:
-                node_dielectric = BlenderMaterials.__nodeDielectric(group.nodes, 0.15, 0.1, 0.97, 1.46, 0, 0)
+                node_dielectric = BlenderMaterials.__nodeDielectric(
+                    group.nodes, 0.15, 0.1, 0.97, 1.46, 0, 0)
 
                 # link nodes together
-                group.links.new(node_input.outputs['Color'],       node_dielectric.inputs['Color'])
-                group.links.new(node_input.outputs['Normal'],      node_dielectric.inputs['Normal'])
-                group.links.new(node_dielectric.outputs['Shader'], node_output.inputs['Shader'])
+                group.links.new(
+                    node_input.outputs['Color'],       node_dielectric.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Normal'],      node_dielectric.inputs['Normal'])
+                group.links.new(
+                    node_dielectric.outputs['Shader'], node_output.inputs['Shader'])
 
     # **************************************************************************************
     def __createBlenderLegoEmissionNodeGroup():
@@ -3449,31 +3906,43 @@ class BlenderMaterials:
             debugPrint("createBlenderLegoEmissionNodeGroup #create")
 
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup(groupName, -450, 90, 250, 0, True)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                groupName, -450, 90, 250, 0, True)
             group.inputs.new('NodeSocketColor', 'Color')
             group.inputs.new('NodeSocketFloatFactor', 'Luminance')
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
 
-            node_emit = BlenderMaterials.__nodeEmission(group.nodes, -242, -123)
+            node_emit = BlenderMaterials.__nodeEmission(
+                group.nodes, -242, -123)
             node_mix = BlenderMaterials.__nodeMix(group.nodes, 0.5, 0, 90)
 
             if BlenderMaterials.usePrincipledShader:
-                node_main = BlenderMaterials.__nodePrincipled(group.nodes, 1.0, 0.05, 0.0, 0.5, 0.0, 0.03, 1.45, 0.0, -242, 154+240)
+                node_main = BlenderMaterials.__nodePrincipled(
+                    group.nodes, 1.0, 0.05, 0.0, 0.5, 0.0, 0.03, 1.45, 0.0, -242, 154+240)
                 if Options.addSubsurface:
-                    group.links.new(node_input.outputs['Color'], node_main.inputs['Subsurface Color'])
-                group.links.new(node_input.outputs['Color'],     node_emit.inputs['Color'])
+                    group.links.new(
+                        node_input.outputs['Color'], node_main.inputs['Subsurface Color'])
+                group.links.new(
+                    node_input.outputs['Color'],     node_emit.inputs['Color'])
                 main_colour = 'Base Color'
             else:
-                node_main = BlenderMaterials.__nodeTranslucent(group.nodes, -242, 154)
+                node_main = BlenderMaterials.__nodeTranslucent(
+                    group.nodes, -242, 154)
                 main_colour = 'Color'
 
             # link nodes together
-            group.links.new(node_input.outputs['Color'],     node_main.inputs[main_colour])
-            group.links.new(node_input.outputs['Normal'],    node_main.inputs['Normal'])
-            group.links.new(node_input.outputs['Luminance'], node_mix.inputs[0])
-            group.links.new(node_main.outputs[0],            node_mix.inputs[1])
-            group.links.new(node_emit.outputs[0],            node_mix.inputs[2])
-            group.links.new(node_mix.outputs[0],             node_output.inputs[0])
+            group.links.new(
+                node_input.outputs['Color'],     node_main.inputs[main_colour])
+            group.links.new(
+                node_input.outputs['Normal'],    node_main.inputs['Normal'])
+            group.links.new(
+                node_input.outputs['Luminance'], node_mix.inputs[0])
+            group.links.new(node_main.outputs[0],
+                            node_mix.inputs[1])
+            group.links.new(node_emit.outputs[0],
+                            node_mix.inputs[2])
+            group.links.new(node_mix.outputs[0],
+                            node_output.inputs[0])
 
     # **********************************************************************************
     def __createBlenderLegoChromeNodeGroup():
@@ -3482,33 +3951,48 @@ class BlenderMaterials:
             debugPrint("createBlenderLegoChromeNodeGroup #create")
 
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup(groupName, -450, 90, 250, 0, True)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                groupName, -450, 90, 250, 0, True)
             group.inputs.new('NodeSocketColor', 'Color')
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
 
             if BlenderMaterials.usePrincipledShader:
-                node_hsv         = BlenderMaterials.__nodeHSV(group.nodes, 0.5, 0.9, 2.0, -90, 0)
-                node_principled  = BlenderMaterials.__nodePrincipled(group.nodes, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 2.4, 0.0, 100, 0)
+                node_hsv = BlenderMaterials.__nodeHSV(
+                    group.nodes, 0.5, 0.9, 2.0, -90, 0)
+                node_principled = BlenderMaterials.__nodePrincipled(
+                    group.nodes, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 2.4, 0.0, 100, 0)
 
                 node_output.location = (575, -140)
 
                 # link nodes together
-                group.links.new(node_input.outputs['Color'],       node_hsv.inputs['Color'])
-                group.links.new(node_input.outputs['Normal'],      node_principled.inputs['Normal'])
-                group.links.new(node_hsv.outputs['Color'],         node_principled.inputs['Base Color'])
-                group.links.new(node_principled.outputs['BSDF'],   node_output.inputs[0])
+                group.links.new(
+                    node_input.outputs['Color'],       node_hsv.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Normal'],      node_principled.inputs['Normal'])
+                group.links.new(
+                    node_hsv.outputs['Color'],         node_principled.inputs['Base Color'])
+                group.links.new(
+                    node_principled.outputs['BSDF'],   node_output.inputs[0])
             else:
-                node_glossyOne = BlenderMaterials.__nodeGlossy(group.nodes, (1,1,1,1), 0.03, 'GGX', -242, 154)
-                node_glossyTwo = BlenderMaterials.__nodeGlossy(group.nodes, (1.0, 1.0, 1.0, 1.0), 0.03, 'BECKMANN', -242, -23)
-                node_mix       = BlenderMaterials.__nodeMix(group.nodes, 0.01, 0, 90)
+                node_glossyOne = BlenderMaterials.__nodeGlossy(
+                    group.nodes, (1, 1, 1, 1), 0.03, 'GGX', -242, 154)
+                node_glossyTwo = BlenderMaterials.__nodeGlossy(
+                    group.nodes, (1.0, 1.0, 1.0, 1.0), 0.03, 'BECKMANN', -242, -23)
+                node_mix = BlenderMaterials.__nodeMix(group.nodes, 0.01, 0, 90)
 
                 # link nodes together
-                group.links.new(node_input.outputs['Color'],  node_glossyOne.inputs['Color'])
-                group.links.new(node_input.outputs['Normal'], node_glossyOne.inputs['Normal'])
-                group.links.new(node_input.outputs['Normal'], node_glossyTwo.inputs['Normal'])
-                group.links.new(node_glossyOne.outputs[0],    node_mix.inputs[1])
-                group.links.new(node_glossyTwo.outputs[0],    node_mix.inputs[2])
-                group.links.new(node_mix.outputs[0],          node_output.inputs[0])
+                group.links.new(
+                    node_input.outputs['Color'],  node_glossyOne.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_glossyOne.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_glossyTwo.inputs['Normal'])
+                group.links.new(
+                    node_glossyOne.outputs[0],    node_mix.inputs[1])
+                group.links.new(
+                    node_glossyTwo.outputs[0],    node_mix.inputs[2])
+                group.links.new(
+                    node_mix.outputs[0],          node_output.inputs[0])
 
     # **********************************************************************************
     def __createBlenderLegoPearlescentNodeGroup():
@@ -3517,48 +4001,75 @@ class BlenderMaterials:
             debugPrint("createBlenderLegoPearlescentNodeGroup #create")
 
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup(groupName, -450, 90, 630, 95, True)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                groupName, -450, 90, 630, 95, True)
             group.inputs.new('NodeSocketColor', 'Color')
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
 
             if BlenderMaterials.usePrincipledShader:
-                node_principled  = BlenderMaterials.__nodePrincipled(group.nodes, 1.0, 0.25, 0.5, 0.2, 1.0, 0.2, 1.6, 0.0, 310, 95)
-                node_sep_hsv     = BlenderMaterials.__nodeSeparateHSV(group.nodes, -240, 75)
-                node_multiply    = BlenderMaterials.__nodeMath(group.nodes, 'MULTIPLY', -60, 0)
-                node_com_hsv     = BlenderMaterials.__nodeCombineHSV(group.nodes, 110, 95)
-                node_tex_coord   = BlenderMaterials.__nodeTexCoord(group.nodes, -730, -223)
-                node_tex_wave    = BlenderMaterials.__nodeTexWave(group.nodes, 'BANDS', 'SIN', 0.5, 40, 1, 1.5, -520, -190)
-                node_color_ramp  = BlenderMaterials.__nodeColorRamp(group.nodes, 0.329, (0.89, 0.89, 0.89, 1), 0.820, (1, 1, 1, 1), -340, -70)
+                node_principled = BlenderMaterials.__nodePrincipled(
+                    group.nodes, 1.0, 0.25, 0.5, 0.2, 1.0, 0.2, 1.6, 0.0, 310, 95)
+                node_sep_hsv = BlenderMaterials.__nodeSeparateHSV(
+                    group.nodes, -240, 75)
+                node_multiply = BlenderMaterials.__nodeMath(
+                    group.nodes, 'MULTIPLY', -60, 0)
+                node_com_hsv = BlenderMaterials.__nodeCombineHSV(
+                    group.nodes, 110, 95)
+                node_tex_coord = BlenderMaterials.__nodeTexCoord(
+                    group.nodes, -730, -223)
+                node_tex_wave = BlenderMaterials.__nodeTexWave(
+                    group.nodes, 'BANDS', 'SIN', 0.5, 40, 1, 1.5, -520, -190)
+                node_color_ramp = BlenderMaterials.__nodeColorRamp(
+                    group.nodes, 0.329, (0.89, 0.89, 0.89, 1), 0.820, (1, 1, 1, 1), -340, -70)
                 element = node_color_ramp.color_ramp.elements.new(1.0)
                 element.color = (1.118, 1.118, 1.118, 1)
 
                 # link nodes together
-                group.links.new(node_input.outputs['Color'], node_sep_hsv.inputs['Color'])
-                group.links.new(node_input.outputs['Normal'], node_principled.inputs['Normal'])
-                group.links.new(node_sep_hsv.outputs['H'], node_com_hsv.inputs['H'])
-                group.links.new(node_sep_hsv.outputs['S'], node_com_hsv.inputs['S'])
-                group.links.new(node_sep_hsv.outputs['V'], node_multiply.inputs[0])
-                group.links.new(node_com_hsv.outputs['Color'], node_principled.inputs['Base Color'])
+                group.links.new(
+                    node_input.outputs['Color'], node_sep_hsv.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_principled.inputs['Normal'])
+                group.links.new(
+                    node_sep_hsv.outputs['H'], node_com_hsv.inputs['H'])
+                group.links.new(
+                    node_sep_hsv.outputs['S'], node_com_hsv.inputs['S'])
+                group.links.new(
+                    node_sep_hsv.outputs['V'], node_multiply.inputs[0])
+                group.links.new(
+                    node_com_hsv.outputs['Color'], node_principled.inputs['Base Color'])
                 if Options.addSubsurface:
-                    group.links.new(node_com_hsv.outputs['Color'], node_principled.inputs['Subsurface Color'])
-                group.links.new(node_tex_coord.outputs['Object'], node_tex_wave.inputs['Vector'])
-                group.links.new(node_tex_wave.outputs['Fac'], node_color_ramp.inputs['Fac'])
-                group.links.new(node_color_ramp.outputs['Color'], node_multiply.inputs[1])
-                group.links.new(node_multiply.outputs[0], node_com_hsv.inputs['V'])
-                group.links.new(node_principled.outputs['BSDF'], node_output.inputs[0])
+                    group.links.new(
+                        node_com_hsv.outputs['Color'], node_principled.inputs['Subsurface Color'])
+                group.links.new(
+                    node_tex_coord.outputs['Object'], node_tex_wave.inputs['Vector'])
+                group.links.new(
+                    node_tex_wave.outputs['Fac'], node_color_ramp.inputs['Fac'])
+                group.links.new(
+                    node_color_ramp.outputs['Color'], node_multiply.inputs[1])
+                group.links.new(
+                    node_multiply.outputs[0], node_com_hsv.inputs['V'])
+                group.links.new(
+                    node_principled.outputs['BSDF'], node_output.inputs[0])
             else:
-                node_diffuse = BlenderMaterials.__nodeDiffuse(group.nodes, 0.0, -242, -23)
-                node_glossy  = BlenderMaterials.__nodeGlossy(group.nodes, (1,1,1,1), 0.05, 'BECKMANN', -242, 154)
-                node_mix     = BlenderMaterials.__nodeMix(group.nodes, 0.4, 0, 90)
+                node_diffuse = BlenderMaterials.__nodeDiffuse(
+                    group.nodes, 0.0, -242, -23)
+                node_glossy = BlenderMaterials.__nodeGlossy(
+                    group.nodes, (1, 1, 1, 1), 0.05, 'BECKMANN', -242, 154)
+                node_mix = BlenderMaterials.__nodeMix(group.nodes, 0.4, 0, 90)
 
                 # link nodes together
-                group.links.new(node_input.outputs['Color'],  node_diffuse.inputs['Color'])
-                group.links.new(node_input.outputs['Color'],  node_glossy.inputs['Color'])
-                group.links.new(node_input.outputs['Normal'], node_diffuse.inputs['Normal'])
-                group.links.new(node_input.outputs['Normal'], node_glossy.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Color'],  node_diffuse.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Color'],  node_glossy.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_diffuse.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_glossy.inputs['Normal'])
                 group.links.new(node_glossy.outputs[0],   node_mix.inputs[1])
                 group.links.new(node_diffuse.outputs[0],  node_mix.inputs[2])
-                group.links.new(node_mix.outputs[0],      node_output.inputs[0])
+                group.links.new(
+                    node_mix.outputs[0],      node_output.inputs[0])
 
     # **********************************************************************************
     def __createBlenderLegoMetalNodeGroup():
@@ -3567,7 +4078,8 @@ class BlenderMaterials:
             debugPrint("createBlenderLegoMetalNodeGroup #create")
 
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup(groupName, -450, 90, 250, 0, True)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                groupName, -450, 90, 250, 0, True)
             group.inputs.new('NodeSocketColor', 'Color')
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
 
@@ -3575,22 +4087,32 @@ class BlenderMaterials:
                 node_principled = BlenderMaterials.__nodePrincipled(group.nodes, 0.0, 0.0, 0.8, 0.2, 0.0, 0.03, 1.45,
                                                                     0.0, 310, 95)
 
-                group.links.new(node_input.outputs['Color'], node_principled.inputs['Base Color'])
-                group.links.new(node_input.outputs['Normal'], node_principled.inputs['Normal'])
-                group.links.new(node_principled.outputs[0], node_output.inputs['Shader'])
+                group.links.new(
+                    node_input.outputs['Color'], node_principled.inputs['Base Color'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_principled.inputs['Normal'])
+                group.links.new(
+                    node_principled.outputs[0], node_output.inputs['Shader'])
             else:
-                node_dielectric = BlenderMaterials.__nodeDielectric(group.nodes, 0.05, 0.2, 0.0, 1.46, -242, 0)
-                node_glossy = BlenderMaterials.__nodeGlossy(group.nodes, (1, 1, 1, 1), 0.2, 'BECKMANN', -242, 154)
+                node_dielectric = BlenderMaterials.__nodeDielectric(
+                    group.nodes, 0.05, 0.2, 0.0, 1.46, -242, 0)
+                node_glossy = BlenderMaterials.__nodeGlossy(
+                    group.nodes, (1, 1, 1, 1), 0.2, 'BECKMANN', -242, 154)
                 node_mix = BlenderMaterials.__nodeMix(group.nodes, 0.4, 0, 90)
 
                 # link nodes together
-                group.links.new(node_input.outputs['Color'], node_glossy.inputs['Color'])
-                group.links.new(node_input.outputs['Color'], node_dielectric.inputs['Color'])
-                group.links.new(node_input.outputs['Normal'], node_glossy.inputs['Normal'])
-                group.links.new(node_input.outputs['Normal'], node_dielectric.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Color'], node_glossy.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Color'], node_dielectric.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_glossy.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_dielectric.inputs['Normal'])
                 group.links.new(node_glossy.outputs[0],     node_mix.inputs[1])
                 group.links.new(node_dielectric.outputs[0], node_mix.inputs[2])
-                group.links.new(node_mix.outputs[0],        node_output.inputs[0])
+                group.links.new(
+                    node_mix.outputs[0],        node_output.inputs[0])
 
     # **********************************************************************************
     def __createBlenderLegoGlitterNodeGroup():
@@ -3599,49 +4121,81 @@ class BlenderMaterials:
             debugPrint("createBlenderLegoGlitterNodeGroup #create")
 
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup(groupName, -450, 0, 410, 0, True)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                groupName, -450, 0, 410, 0, True)
             group.inputs.new('NodeSocketColor', 'Color')
             group.inputs.new('NodeSocketColor', 'Glitter Color')
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
 
             if BlenderMaterials.usePrincipledShader:
-                node_voronoi     = BlenderMaterials.__nodeVoronoi(group.nodes, 100, -222, 310)
-                node_gamma       = BlenderMaterials.__nodeGamma(group.nodes, 50, 0, 200)
-                node_mix         = BlenderMaterials.__nodeMix(group.nodes, 0.05, 210, 90+25)
-                node_principled1 = BlenderMaterials.__nodePrincipled(group.nodes, 0.0, 0.0, 0.0, 0.2, 0.0, 0.03, 1.585, 1.0, 45-270, 340-210)
-                node_principled2 = BlenderMaterials.__nodePrincipled(group.nodes, 0.0, 0.0, 0.0, 0.5, 0.0, 0.03, 1.45, 0.0, 45-270, 340-750)
+                node_voronoi = BlenderMaterials.__nodeVoronoi(
+                    group.nodes, 100, -222, 310)
+                node_gamma = BlenderMaterials.__nodeGamma(
+                    group.nodes, 50, 0, 200)
+                node_mix = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.05, 210, 90+25)
+                node_principled1 = BlenderMaterials.__nodePrincipled(
+                    group.nodes, 0.0, 0.0, 0.0, 0.2, 0.0, 0.03, 1.585, 1.0, 45-270, 340-210)
+                node_principled2 = BlenderMaterials.__nodePrincipled(
+                    group.nodes, 0.0, 0.0, 0.0, 0.5, 0.0, 0.03, 1.45, 0.0, 45-270, 340-750)
 
-                group.links.new(node_input.outputs['Color'], node_principled1.inputs['Base Color'])
-                group.links.new(node_input.outputs['Glitter Color'], node_principled2.inputs['Base Color'])
-                group.links.new(node_input.outputs['Normal'], node_principled1.inputs['Normal'])
-                group.links.new(node_input.outputs['Normal'], node_principled2.inputs['Normal'])
-                group.links.new(node_voronoi.outputs['Color'], node_gamma.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Color'], node_principled1.inputs['Base Color'])
+                group.links.new(
+                    node_input.outputs['Glitter Color'], node_principled2.inputs['Base Color'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_principled1.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_principled2.inputs['Normal'])
+                group.links.new(
+                    node_voronoi.outputs['Color'], node_gamma.inputs['Color'])
                 group.links.new(node_gamma.outputs[0], node_mix.inputs[0])
-                group.links.new(node_principled1.outputs['BSDF'], node_mix.inputs[1])
-                group.links.new(node_principled2.outputs['BSDF'], node_mix.inputs[2])
+                group.links.new(
+                    node_principled1.outputs['BSDF'], node_mix.inputs[1])
+                group.links.new(
+                    node_principled2.outputs['BSDF'], node_mix.inputs[2])
                 group.links.new(node_mix.outputs[0], node_output.inputs[0])
             else:
-                node_glass   = BlenderMaterials.__nodeGlass(group.nodes, 0.05, 1.46, 'BECKMANN', -242, 154)
-                node_glossy  = BlenderMaterials.__nodeGlossy(group.nodes, (1,1,1,1), 0.05, 'BECKMANN', -242, -23)
-                node_diffuse = BlenderMaterials.__nodeDiffuse(group.nodes, 0.0, -12, -49)
-                node_voronoi = BlenderMaterials.__nodeVoronoi(group.nodes, 100, -232, 310)
-                node_gamma   = BlenderMaterials.__nodeGamma(group.nodes, 50, 0, 200)
-                node_mixOne  = BlenderMaterials.__nodeMix(group.nodes, 0.05, 0, 90)
-                node_mixTwo  = BlenderMaterials.__nodeMix(group.nodes, 0.5, 200, 90)
+                node_glass = BlenderMaterials.__nodeGlass(
+                    group.nodes, 0.05, 1.46, 'BECKMANN', -242, 154)
+                node_glossy = BlenderMaterials.__nodeGlossy(
+                    group.nodes, (1, 1, 1, 1), 0.05, 'BECKMANN', -242, -23)
+                node_diffuse = BlenderMaterials.__nodeDiffuse(
+                    group.nodes, 0.0, -12, -49)
+                node_voronoi = BlenderMaterials.__nodeVoronoi(
+                    group.nodes, 100, -232, 310)
+                node_gamma = BlenderMaterials.__nodeGamma(
+                    group.nodes, 50, 0, 200)
+                node_mixOne = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.05, 0, 90)
+                node_mixTwo = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.5, 200, 90)
 
                 # link nodes together
-                group.links.new(node_input.outputs['Color'], node_glass.inputs['Color'])
-                group.links.new(node_input.outputs['Glitter Color'], node_diffuse.inputs['Color'])
-                group.links.new(node_input.outputs['Normal'], node_glass.inputs['Normal'])
-                group.links.new(node_input.outputs['Normal'], node_glossy.inputs['Normal'])
-                group.links.new(node_input.outputs['Normal'], node_diffuse.inputs['Normal'])
-                group.links.new(node_glass.outputs[0],     node_mixOne.inputs[1])
-                group.links.new(node_glossy.outputs[0],    node_mixOne.inputs[2])
-                group.links.new(node_voronoi.outputs[0],   node_gamma.inputs[0])
-                group.links.new(node_gamma.outputs[0],     node_mixTwo.inputs[0])
-                group.links.new(node_mixOne.outputs[0],    node_mixTwo.inputs[1])
-                group.links.new(node_diffuse.outputs[0],   node_mixTwo.inputs[2])
-                group.links.new(node_mixTwo.outputs[0],    node_output.inputs[0])
+                group.links.new(
+                    node_input.outputs['Color'], node_glass.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Glitter Color'], node_diffuse.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_glass.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_glossy.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_diffuse.inputs['Normal'])
+                group.links.new(
+                    node_glass.outputs[0],     node_mixOne.inputs[1])
+                group.links.new(
+                    node_glossy.outputs[0],    node_mixOne.inputs[2])
+                group.links.new(
+                    node_voronoi.outputs[0],   node_gamma.inputs[0])
+                group.links.new(
+                    node_gamma.outputs[0],     node_mixTwo.inputs[0])
+                group.links.new(
+                    node_mixOne.outputs[0],    node_mixTwo.inputs[1])
+                group.links.new(
+                    node_diffuse.outputs[0],   node_mixTwo.inputs[2])
+                group.links.new(
+                    node_mixTwo.outputs[0],    node_output.inputs[0])
 
     # **********************************************************************************
     def __createBlenderLegoSpeckleNodeGroup():
@@ -3650,49 +4204,81 @@ class BlenderMaterials:
             debugPrint("createBlenderLegoSpeckleNodeGroup #create")
 
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup(groupName, -450, 0, 410, 0, True)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                groupName, -450, 0, 410, 0, True)
             group.inputs.new('NodeSocketColor', 'Color')
             group.inputs.new('NodeSocketColor', 'Speckle Color')
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
 
             if BlenderMaterials.usePrincipledShader:
-                node_voronoi     = BlenderMaterials.__nodeVoronoi(group.nodes, 50, -222, 310)
-                node_gamma       = BlenderMaterials.__nodeGamma(group.nodes, 3.5, 0, 200)
-                node_mix         = BlenderMaterials.__nodeMix(group.nodes, 0.05, 210, 90+25)
-                node_principled1 = BlenderMaterials.__nodePrincipled(group.nodes, 0.0, 0.0, 0.0, 0.1, 0.0, 0.03, 1.45, 0.0, 45-270, 340-210)
-                node_principled2 = BlenderMaterials.__nodePrincipled(group.nodes, 0.0, 0.0, 1.0, 0.5, 0.0, 0.03, 1.45, 0.0, 45-270, 340-750)
+                node_voronoi = BlenderMaterials.__nodeVoronoi(
+                    group.nodes, 50, -222, 310)
+                node_gamma = BlenderMaterials.__nodeGamma(
+                    group.nodes, 3.5, 0, 200)
+                node_mix = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.05, 210, 90+25)
+                node_principled1 = BlenderMaterials.__nodePrincipled(
+                    group.nodes, 0.0, 0.0, 0.0, 0.1, 0.0, 0.03, 1.45, 0.0, 45-270, 340-210)
+                node_principled2 = BlenderMaterials.__nodePrincipled(
+                    group.nodes, 0.0, 0.0, 1.0, 0.5, 0.0, 0.03, 1.45, 0.0, 45-270, 340-750)
 
-                group.links.new(node_input.outputs['Color'], node_principled1.inputs['Base Color'])
-                group.links.new(node_input.outputs['Speckle Color'], node_principled2.inputs['Base Color'])
-                group.links.new(node_input.outputs['Normal'], node_principled1.inputs['Normal'])
-                group.links.new(node_input.outputs['Normal'], node_principled2.inputs['Normal'])
-                group.links.new(node_voronoi.outputs['Color'], node_gamma.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Color'], node_principled1.inputs['Base Color'])
+                group.links.new(
+                    node_input.outputs['Speckle Color'], node_principled2.inputs['Base Color'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_principled1.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_principled2.inputs['Normal'])
+                group.links.new(
+                    node_voronoi.outputs['Color'], node_gamma.inputs['Color'])
                 group.links.new(node_gamma.outputs[0], node_mix.inputs[0])
-                group.links.new(node_principled1.outputs['BSDF'], node_mix.inputs[1])
-                group.links.new(node_principled2.outputs['BSDF'], node_mix.inputs[2])
+                group.links.new(
+                    node_principled1.outputs['BSDF'], node_mix.inputs[1])
+                group.links.new(
+                    node_principled2.outputs['BSDF'], node_mix.inputs[2])
                 group.links.new(node_mix.outputs[0], node_output.inputs[0])
             else:
-                node_diffuseOne = BlenderMaterials.__nodeDiffuse(group.nodes, 0.0, -242, 131)
-                node_glossy     = BlenderMaterials.__nodeGlossy(group.nodes, (0.333, 0.333, 0.333, 1.0), 0.2, 'BECKMANN', -242, -23)
-                node_diffuseTwo = BlenderMaterials.__nodeDiffuse(group.nodes, 0.0, -12, -49)
-                node_voronoi    = BlenderMaterials.__nodeVoronoi(group.nodes, 100, -232, 310)
-                node_gamma      = BlenderMaterials.__nodeGamma(group.nodes, 20, 0, 200)
-                node_mixOne     = BlenderMaterials.__nodeMix(group.nodes, 0.2, 0, 90)
-                node_mixTwo     = BlenderMaterials.__nodeMix(group.nodes, 0.5, 200, 90)
+                node_diffuseOne = BlenderMaterials.__nodeDiffuse(
+                    group.nodes, 0.0, -242, 131)
+                node_glossy = BlenderMaterials.__nodeGlossy(
+                    group.nodes, (0.333, 0.333, 0.333, 1.0), 0.2, 'BECKMANN', -242, -23)
+                node_diffuseTwo = BlenderMaterials.__nodeDiffuse(
+                    group.nodes, 0.0, -12, -49)
+                node_voronoi = BlenderMaterials.__nodeVoronoi(
+                    group.nodes, 100, -232, 310)
+                node_gamma = BlenderMaterials.__nodeGamma(
+                    group.nodes, 20, 0, 200)
+                node_mixOne = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.2, 0, 90)
+                node_mixTwo = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.5, 200, 90)
 
                 # link nodes together
-                group.links.new(node_input.outputs['Color'], node_diffuseOne.inputs['Color'])
-                group.links.new(node_input.outputs['Speckle Color'], node_diffuseTwo.inputs['Color'])
-                group.links.new(node_input.outputs['Normal'], node_diffuseOne.inputs['Normal'])
-                group.links.new(node_input.outputs['Normal'], node_glossy.inputs['Normal'])
-                group.links.new(node_input.outputs['Normal'], node_diffuseTwo.inputs['Normal'])
-                group.links.new(node_voronoi.outputs[0],       node_gamma.inputs[0])
-                group.links.new(node_diffuseOne.outputs[0],    node_mixOne.inputs[1])
-                group.links.new(node_glossy.outputs[0],        node_mixOne.inputs[2])
-                group.links.new(node_gamma.outputs[0],         node_mixTwo.inputs[0])
-                group.links.new(node_mixOne.outputs[0],        node_mixTwo.inputs[1])
-                group.links.new(node_diffuseTwo.outputs[0],    node_mixTwo.inputs[2])
-                group.links.new(node_mixTwo.outputs[0],        node_output.inputs[0])
+                group.links.new(
+                    node_input.outputs['Color'], node_diffuseOne.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Speckle Color'], node_diffuseTwo.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_diffuseOne.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_glossy.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_diffuseTwo.inputs['Normal'])
+                group.links.new(
+                    node_voronoi.outputs[0],       node_gamma.inputs[0])
+                group.links.new(
+                    node_diffuseOne.outputs[0],    node_mixOne.inputs[1])
+                group.links.new(
+                    node_glossy.outputs[0],        node_mixOne.inputs[2])
+                group.links.new(
+                    node_gamma.outputs[0],         node_mixTwo.inputs[0])
+                group.links.new(
+                    node_mixOne.outputs[0],        node_mixTwo.inputs[1])
+                group.links.new(
+                    node_diffuseTwo.outputs[0],    node_mixTwo.inputs[2])
+                group.links.new(
+                    node_mixTwo.outputs[0],        node_output.inputs[0])
 
     # **********************************************************************************
     def __createBlenderLegoMilkyWhiteNodeGroup():
@@ -3701,43 +4287,67 @@ class BlenderMaterials:
             debugPrint("createBlenderLegoMilkyWhiteNodeGroup #create")
 
             # create a group
-            group, node_input, node_output = BlenderMaterials.__createGroup(groupName, -450, 0, 350, 0, True)
+            group, node_input, node_output = BlenderMaterials.__createGroup(
+                groupName, -450, 0, 350, 0, True)
             group.inputs.new('NodeSocketColor', 'Color')
             group.inputs.new('NodeSocketVectorDirection', 'Normal')
 
             if BlenderMaterials.usePrincipledShader:
                 node_principled = BlenderMaterials.__nodePrincipled(group.nodes, 1.0, 0.05, 0.0, 0.5, 0.0, 0.03, 1.45,
                                                                     0.0, 45 - 270, 340 - 210)
-                node_translucent = BlenderMaterials.__nodeTranslucent(group.nodes, -225, -382)
-                node_mix = BlenderMaterials.__nodeMix(group.nodes, 0.5, 65, -40)
+                node_translucent = BlenderMaterials.__nodeTranslucent(
+                    group.nodes, -225, -382)
+                node_mix = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.5, 65, -40)
 
-                group.links.new(node_input.outputs['Color'], node_principled.inputs['Base Color'])
+                group.links.new(
+                    node_input.outputs['Color'], node_principled.inputs['Base Color'])
                 if Options.addSubsurface:
-                    group.links.new(node_input.outputs['Color'], node_principled.inputs['Subsurface Color'])
-                group.links.new(node_input.outputs['Normal'], node_principled.inputs['Normal'])
-                group.links.new(node_input.outputs['Normal'], node_translucent.inputs['Normal'])
+                    group.links.new(
+                        node_input.outputs['Color'], node_principled.inputs['Subsurface Color'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_principled.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_translucent.inputs['Normal'])
                 group.links.new(node_principled.outputs[0], node_mix.inputs[1])
-                group.links.new(node_translucent.outputs[0], node_mix.inputs[2])
+                group.links.new(
+                    node_translucent.outputs[0], node_mix.inputs[2])
                 group.links.new(node_mix.outputs[0], node_output.inputs[0])
             else:
-                node_diffuse = BlenderMaterials.__nodeDiffuse(group.nodes, 0.0, -242, 90)
-                node_trans   = BlenderMaterials.__nodeTranslucent(group.nodes, -242, -46)
-                node_glossy  = BlenderMaterials.__nodeGlossy(group.nodes, (1,1,1,1), 0.5, 'BECKMANN', -42, -54)
-                node_mixOne  = BlenderMaterials.__nodeMix(group.nodes, 0.4, -35, 90)
-                node_mixTwo  = BlenderMaterials.__nodeMix(group.nodes, 0.2, 175, 90)
+                node_diffuse = BlenderMaterials.__nodeDiffuse(
+                    group.nodes, 0.0, -242, 90)
+                node_trans = BlenderMaterials.__nodeTranslucent(
+                    group.nodes, -242, -46)
+                node_glossy = BlenderMaterials.__nodeGlossy(
+                    group.nodes, (1, 1, 1, 1), 0.5, 'BECKMANN', -42, -54)
+                node_mixOne = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.4, -35, 90)
+                node_mixTwo = BlenderMaterials.__nodeMix(
+                    group.nodes, 0.2, 175, 90)
 
                 # link nodes together
-                group.links.new(node_input.outputs['Color'],  node_diffuse.inputs['Color'])
-                group.links.new(node_input.outputs['Color'],  node_trans.inputs['Color'])
-                group.links.new(node_input.outputs['Color'],  node_glossy.inputs['Color'])
-                group.links.new(node_input.outputs['Normal'], node_diffuse.inputs['Normal'])
-                group.links.new(node_input.outputs['Normal'], node_trans.inputs['Normal'])
-                group.links.new(node_input.outputs['Normal'], node_glossy.inputs['Normal'])
-                group.links.new(node_diffuse.outputs[0],  node_mixOne.inputs[1])
-                group.links.new(node_trans.outputs[0],    node_mixOne.inputs[2])
-                group.links.new(node_mixOne.outputs[0],   node_mixTwo.inputs[1])
-                group.links.new(node_glossy.outputs[0],   node_mixTwo.inputs[2])
-                group.links.new(node_mixTwo.outputs[0],   node_output.inputs[0])
+                group.links.new(
+                    node_input.outputs['Color'],  node_diffuse.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Color'],  node_trans.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Color'],  node_glossy.inputs['Color'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_diffuse.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_trans.inputs['Normal'])
+                group.links.new(
+                    node_input.outputs['Normal'], node_glossy.inputs['Normal'])
+                group.links.new(
+                    node_diffuse.outputs[0],  node_mixOne.inputs[1])
+                group.links.new(
+                    node_trans.outputs[0],    node_mixOne.inputs[2])
+                group.links.new(
+                    node_mixOne.outputs[0],   node_mixTwo.inputs[1])
+                group.links.new(
+                    node_glossy.outputs[0],   node_mixTwo.inputs[2])
+                group.links.new(
+                    node_mixTwo.outputs[0],   node_output.inputs[0])
 
     # **********************************************************************************
     def createBlenderNodeGroups():
@@ -3804,8 +4414,10 @@ def addSharpEdges(bm, geometry, filename):
         edgeIndices = {}
         for ind, geomEdge in enumerate(geometry.edges):
             # Find index of nearest points in bm.verts to geomEdge[0] and geomEdge[1]
-            edges0 = [index for (co, index, dist) in kd.find_range(geomEdge[0], epsilon)]
-            edges1 = [index for (co, index, dist) in kd.find_range(geomEdge[1], epsilon)]
+            edges0 = [index for (co, index, dist)
+                      in kd.find_range(geomEdge[0], epsilon)]
+            edges1 = [index for (co, index, dist)
+                      in kd.find_range(geomEdge[1], epsilon)]
 
             # if (len(edges0) > 2):
             #    printWarningOnce("Found {1} vertices near {0} in file {2}".format(geomEdge[0], len(edges0), filename))
@@ -3984,7 +4596,8 @@ def isSlopeFace(slopeAngles, isGrainySlopeAllowed, faceVertices):
         return False
 
     # Step 2: Calculate angle of face normal to the ground
-    faceNormal = (faceVertices[1] - faceVertices[0]).cross(faceVertices[2] - faceVertices[0])
+    faceNormal = (faceVertices[1] - faceVertices[0]
+                  ).cross(faceVertices[2] - faceVertices[0])
     faceNormal.normalize()
 
     # Clamp value to range -1 to 1 (ensure we are in the strict range of the acos function, taking account of rounding errors)
@@ -4050,14 +4663,16 @@ def createMesh(name, meshName, geometry):
                 # For debugging purposes, we can make sloped faces blue:
                 # if isSlopeMaterial:
                 #     faceColour = "1"
-                material = BlenderMaterials.getMaterial(faceColour, isSlopeMaterial)
+                material = BlenderMaterials.getMaterial(
+                    faceColour, isSlopeMaterial)
 
                 if material is not None:
                     if mesh.materials.get(material.name) is None:
                         mesh.materials.append(material)
                     f.material_index = mesh.materials.find(material.name)
                 else:
-                    printWarningOnce("Could not find material '{0}' in mesh '{1}'.".format(faceColour, name))
+                    printWarningOnce(
+                        "Could not find material '{0}' in mesh '{1}'.".format(faceColour, name))
 
     # Cache mesh
     if newMeshCreated:
@@ -4139,7 +4754,8 @@ def createBlenderObjectsFromNode(node,
     ob = None
 
     if node.isBlenderObjectNode():
-        ourColourName = LDrawNode.resolveColour(node.colourName, realColourName)
+        ourColourName = LDrawNode.resolveColour(
+            node.colourName, realColourName)
         meshName, geometry = node.getBlenderGeometry(ourColourName, name)
         mesh, newMeshCreated = createMesh(name, meshName, geometry)
 
@@ -4158,7 +4774,8 @@ def createBlenderObjectsFromNode(node,
         ob["Lego.isTransparent"] = False
         if mesh is not None:
             for faceInfo in geometry.faceInfo:
-                material = BlenderMaterials.getMaterial(faceInfo.faceColour, False)
+                material = BlenderMaterials.getMaterial(
+                    faceInfo.faceColour, False)
                 if material is not None:
                     if "Lego.isTransparent" in material:
                         if material["Lego.isTransparent"]:
@@ -4188,7 +4805,8 @@ def createBlenderObjectsFromNode(node,
             if emission_node:
                 emission_node.inputs['Color'].default_value = globalLightBricks[name]
                 emission_node.inputs['Strength'].default_value = 100.0
-            lamp_object = bpy.data.objects.new(name="LightLamp", object_data=lamp_data)
+            lamp_object = bpy.data.objects.new(
+                name="LightLamp", object_data=lamp_data)
             lamp_object.location = (-0.27, 0.18, 0.0)
 
             addNodeToParentWithGroups(blenderNodeParent, [], lamp_object)
@@ -4202,9 +4820,11 @@ def createBlenderObjectsFromNode(node,
             ob.data.use_customdata_edge_bevel = True
 
             # Calculate what we need to do next
-            recalculateNormals = node.file.isDoubleSided and (Options.resolveAmbiguousNormals == "guess")
-            keepDoubleSided    = node.file.isDoubleSided and (Options.resolveAmbiguousNormals == "double")
-            removeDoubles      = Options.removeDoubles and not keepDoubleSided
+            recalculateNormals = node.file.isDoubleSided and (
+                Options.resolveAmbiguousNormals == "guess")
+            keepDoubleSided = node.file.isDoubleSided and (
+                Options.resolveAmbiguousNormals == "double")
+            removeDoubles = Options.removeDoubles and not keepDoubleSided
 
             bm = bmesh.new()
             bm.from_mesh(ob.data)
@@ -4214,7 +4834,8 @@ def createBlenderObjectsFromNode(node,
 
             # Remove doubles
             if removeDoubles:
-                bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=globalWeldDistance)
+                bmesh.ops.remove_doubles(
+                    bm, verts=bm.verts[:], dist=globalWeldDistance)
 
             # Recalculate normals
             if recalculateNormals:
@@ -4256,7 +4877,7 @@ def createBlenderObjectsFromNode(node,
                 if dim.x != 0:
                     scaleFac.x = 1 - Options.gapWidth * abs(objScale.x) / dim.x
                 if dim.y != 0:
-                    scaleFac.y = 1 - gapHeight        * abs(objScale.y) / dim.y
+                    scaleFac.y = 1 - gapHeight * abs(objScale.y) / dim.y
                 if dim.z != 0:
                     scaleFac.z = 1 - Options.gapWidth * abs(objScale.z) / dim.z
 
@@ -4284,7 +4905,8 @@ def createBlenderObjectsFromNode(node,
         if Options.positionObjectOnGroundAtOrigin or Options.positionCamera:
             if mesh and mesh.vertices:
                 localTransform = matmul(localToWorldSpaceMatrix, localMatrix)
-                points = [matvecmul(localTransform, p.co) for p in mesh.vertices]
+                points = [matvecmul(localTransform, p.co)
+                          for p in mesh.vertices]
 
                 # Remember all the points
                 globalPoints.extend(points)
@@ -4302,9 +4924,11 @@ def createBlenderObjectsFromNode(node,
     # Create children and parent them
     for childNode in node.file.childNodes:
         # Create sub-objects recursively
-        childColourName = LDrawNode.resolveColour(childNode.colourName, realColourName)
+        childColourName = LDrawNode.resolveColour(
+            childNode.colourName, realColourName)
         createBlenderObjectsFromNode(childNode, childNode.matrix, childNode.filename, childColourName,
-                                     blenderParentTransform, matmul(localToWorldSpaceMatrix, localMatrix),
+                                     blenderParentTransform, matmul(
+                                         localToWorldSpaceMatrix, localMatrix),
                                      blenderNodeParent)
 
     return ob
@@ -4334,7 +4958,8 @@ def setupLineset(lineset, thickness, group):
     lineset.edge_type_negation = 'INCLUSIVE'
     if isBlender28OrLater:
         lineset.select_by_collection = True
-        lineset.collection = bpy.data.collections[bpy.data.collections.find(group)]
+        lineset.collection = bpy.data.collections[bpy.data.collections.find(
+            group)]
     else:
         lineset.select_by_group = True
         lineset.group = bpy.data.groups[bpy.data.groups.find(group)]
@@ -4369,15 +4994,17 @@ def setupRealisticLook():
         scene.world.use_nodes = True
         nodes = scene.world.node_tree.nodes
         links = scene.world.node_tree.links
-        worldNodeNames = list(map((lambda x: x.name), scene.world.node_tree.nodes))
+        worldNodeNames = list(
+            map((lambda x: x.name), scene.world.node_tree.nodes))
 
         if "LegoEnvMap" in worldNodeNames:
             env_tex = nodes["LegoEnvMap"]
         else:
-            env_tex          = nodes.new('ShaderNodeTexEnvironment')
+            env_tex = nodes.new('ShaderNodeTexEnvironment')
             env_tex.location = (-250, 300)
-            env_tex.name     = "LegoEnvMap"
-            env_tex.image    = bpy.data.images.load(Options.environmentFile, check_existing=True)
+            env_tex.name = "LegoEnvMap"
+            env_tex.image = bpy.data.images.load(
+                Options.environmentFile, check_existing=True)
 
         if "Background" in worldNodeNames:
             background = nodes["Background"]
@@ -4505,22 +5132,26 @@ def setupInstructionsLook():
             # Create collection
             bpy.data.collections.new('Black Edged Bricks Collection')
             # Add collection to scene
-            scene.collection.children.link(bpy.data.collections['Black Edged Bricks Collection'])
+            scene.collection.children.link(
+                bpy.data.collections['Black Edged Bricks Collection'])
         if bpy.data.collections.find('White Edged Bricks Collection') < 0:
             # Create collection
             bpy.data.collections.new('White Edged Bricks Collection')
             # Add collection to scene
-            scene.collection.children.link(bpy.data.collections['White Edged Bricks Collection'])
+            scene.collection.children.link(
+                bpy.data.collections['White Edged Bricks Collection'])
         if bpy.data.collections.find('Solid Bricks Collection') < 0:
             # Create collection
             bpy.data.collections.new('Solid Bricks Collection')
             # Add collection to scene
-            scene.collection.children.link(bpy.data.collections['Solid Bricks Collection'])
+            scene.collection.children.link(
+                bpy.data.collections['Solid Bricks Collection'])
         if bpy.data.collections.find('Transparent Bricks Collection') < 0:
             # Create collection
             bpy.data.collections.new('Transparent Bricks Collection')
             # Add collection to scene
-            scene.collection.children.link(bpy.data.collections['Transparent Bricks Collection'])
+            scene.collection.children.link(
+                bpy.data.collections['Transparent Bricks Collection'])
 
     else:
         if bpy.data.groups.find('Black Edged Bricks Collection') < 0:
@@ -4597,9 +5228,11 @@ def setupInstructionsLook():
 
                     # Dark colours have white lines
                     if LegoColours.isDark(colour):
-                        linkToCollection('White Edged Bricks Collection', object)
+                        linkToCollection(
+                            'White Edged Bricks Collection', object)
                     else:
-                        linkToCollection('Black Edged Bricks Collection', object)
+                        linkToCollection(
+                            'Black Edged Bricks Collection', object)
 
     else:
         # Enable two scene layers
@@ -4641,9 +5274,11 @@ def setupInstructionsLook():
 
                     # Dark colours have white lines
                     if LegoColours.isDark(colour):
-                        linkToCollection('White Edged Bricks Collection', object)
+                        linkToCollection(
+                            'White Edged Bricks Collection', object)
                     else:
-                        linkToCollection('Black Edged Bricks Collection', object)
+                        linkToCollection(
+                            'Black Edged Bricks Collection', object)
 
     # Find or create linesets
     solidBlackLineset = None
@@ -4664,19 +5299,23 @@ def setupInstructionsLook():
             transWhiteLineset = lineset
 
     if solidBlackLineset == None:
-        layers[solidLayer].freestyle_settings.linesets.new("LegoSolidBlackLines")
+        layers[solidLayer].freestyle_settings.linesets.new(
+            "LegoSolidBlackLines")
         solidBlackLineset = layers[solidLayer].freestyle_settings.linesets[-1]
         setupLineset(solidBlackLineset, 2.25, 'Black Edged Bricks Collection')
     if solidWhiteLineset == None:
-        layers[solidLayer].freestyle_settings.linesets.new("LegoSolidWhiteLines")
+        layers[solidLayer].freestyle_settings.linesets.new(
+            "LegoSolidWhiteLines")
         solidWhiteLineset = layers[solidLayer].freestyle_settings.linesets[-1]
         setupLineset(solidWhiteLineset, 2, 'White Edged Bricks Collection')
     if transBlackLineset == None:
-        layers[transLayer].freestyle_settings.linesets.new("LegoTransBlackLines")
+        layers[transLayer].freestyle_settings.linesets.new(
+            "LegoTransBlackLines")
         transBlackLineset = layers[transLayer].freestyle_settings.linesets[-1]
         setupLineset(transBlackLineset, 2.25, 'Black Edged Bricks Collection')
     if transWhiteLineset == None:
-        layers[transLayer].freestyle_settings.linesets.new("LegoTransWhiteLines")
+        layers[transLayer].freestyle_settings.linesets.new(
+            "LegoTransWhiteLines")
         transWhiteLineset = layers[transLayer].freestyle_settings.linesets[-1]
         setupLineset(transWhiteLineset, 2, 'White Edged Bricks Collection')
 
@@ -4737,7 +5376,8 @@ def iterateCameraPosition(camera, render, vcentre3d, moveCamera):
     modelview_matrix = camera.matrix_world.inverted()
 
     if isBlender28OrLater:
-        get_depsgraph_method = getattr(bpy.context, "evaluated_depsgraph_get", None)
+        get_depsgraph_method = getattr(
+            bpy.context, "evaluated_depsgraph_get", None)
         if callable(get_depsgraph_method):
             depsgraph = get_depsgraph_method()
         else:
@@ -4764,7 +5404,8 @@ def iterateCameraPosition(camera, render, vcentre3d, moveCamera):
     # Convert 3d points to camera space, calculating the min and max extents in 2d normalised camera space.
     minDistToCamera = sys.float_info.max
     for point in globalPoints:
-        p1 = matvecmul(mp_matrix, mathutils.Vector((point.x, point.y, point.z, 1)))
+        p1 = matvecmul(mp_matrix, mathutils.Vector(
+            (point.x, point.y, point.z, 1)))
         if isOrtho:
             point2d = (p1.x, p1.y)
         elif abs(p1.w) < 1e-8:
@@ -4810,7 +5451,8 @@ def iterateCameraPosition(camera, render, vcentre3d, moveCamera):
 
     # Transform the 2d centre of object back into 3d space
     if isOrtho:
-        centre3d = matvecmul(mpinv_matrix, mathutils.Vector((centre2d.x, centre2d.y, 0, 1)))
+        centre3d = matvecmul(mpinv_matrix, mathutils.Vector(
+            (centre2d.x, centre2d.y, 0, 1)))
         centre3d = mathutils.Vector((centre3d.x, centre3d.y, centre3d.z))
 
         # Move centre3d a distance d from the camera plane
@@ -4818,8 +5460,10 @@ def iterateCameraPosition(camera, render, vcentre3d, moveCamera):
         dist = v.dot(forwards3d)
         centre3d = centre3d + (d - dist) * forwards3d
     else:
-        centre3d = matvecmul(mpinv_matrix, mathutils.Vector((centre2d.x, centre2d.y, -1, 1)))
-        centre3d = mathutils.Vector((centre3d.x / centre3d.w, centre3d.y / centre3d.w, centre3d.z / centre3d.w))
+        centre3d = matvecmul(mpinv_matrix, mathutils.Vector(
+            (centre2d.x, centre2d.y, -1, 1)))
+        centre3d = mathutils.Vector(
+            (centre3d.x / centre3d.w, centre3d.y / centre3d.w, centre3d.z / centre3d.w))
 
         # Make sure the 3d centre of the object is distance d from the camera location
         forwards = centre3d - camera.location
@@ -4853,7 +5497,8 @@ def iterateCameraPosition(camera, render, vcentre3d, moveCamera):
             offset3d = 0.93 * (centre3d - origin3d) + offsetD * forwards3d
         # debugPrint("offset3d: " + ('%.5f' % offset3d.x) + "," + ('%.5f' % offset3d.y) + "," + ('%.5f' % offset3d.z) + " length:" + ('%.5f' % offset3d.length))
         # debugPrint("move by: " + ('%.5f' % offset3d.length))
-        camera.location += mathutils.Vector((offset3d.x, offset3d.y, offset3d.z))
+        camera.location += mathutils.Vector((offset3d.x,
+                                            offset3d.y, offset3d.z))
         return offset3d.length
     return 0.0
 
@@ -4886,10 +5531,12 @@ def loadFromFile(context, filename, isFullFilepath=True):
     if usingArchiveLibraries:
         if not Configure.hasOfficialLibrary:
             if Options.useColourScheme != "custom" or Options.customLDConfigFile == "":
-                printError("LDConfig (colour) file not found. Official {0} library not specified".format(libraryType))
+                printError(
+                    "LDConfig (colour) file not found. Official {0} library not specified".format(libraryType))
                 return None
             elif Options.useColourScheme == "custom":
-                printWarningOnce("Official {0} part library not found.".format(libraryType))
+                printWarningOnce(
+                    "Official {0} part library not found.".format(libraryType))
 
     LegoColours()
     Math()
@@ -4904,16 +5551,26 @@ def loadFromFile(context, filename, isFullFilepath=True):
     if Options.useLogoStuds:
         debugPrint("Loading stud files")
         # Load stud logo files into cache
-        addFileToCache("stud-logo"   + Options.logoStudVersion + ".dat", "stud.dat")
-        addFileToCache("stud2-logo"  + Options.logoStudVersion + ".dat", "stud2.dat")
-        addFileToCache("stud6-logo"  + Options.logoStudVersion + ".dat", "stud6.dat")
-        addFileToCache("stud6a-logo" + Options.logoStudVersion + ".dat", "stud6a.dat")
-        addFileToCache("stud7-logo"  + Options.logoStudVersion + ".dat", "stud7.dat")
-        addFileToCache("stud10-logo" + Options.logoStudVersion + ".dat", "stud10.dat")
-        addFileToCache("stud13-logo" + Options.logoStudVersion + ".dat", "stud13.dat")
-        addFileToCache("stud15-logo" + Options.logoStudVersion + ".dat", "stud15.dat")
-        addFileToCache("stud20-logo" + Options.logoStudVersion + ".dat", "stud20.dat")
-        addFileToCache("studa-logo"  + Options.logoStudVersion + ".dat", "studa.dat")
+        addFileToCache("stud-logo" + Options.logoStudVersion +
+                       ".dat", "stud.dat")
+        addFileToCache("stud2-logo" + Options.logoStudVersion +
+                       ".dat", "stud2.dat")
+        addFileToCache("stud6-logo" + Options.logoStudVersion +
+                       ".dat", "stud6.dat")
+        addFileToCache("stud6a-logo" + Options.logoStudVersion +
+                       ".dat", "stud6a.dat")
+        addFileToCache("stud7-logo" + Options.logoStudVersion +
+                       ".dat", "stud7.dat")
+        addFileToCache("stud10-logo" + Options.logoStudVersion +
+                       ".dat", "stud10.dat")
+        addFileToCache("stud13-logo" + Options.logoStudVersion +
+                       ".dat", "stud13.dat")
+        addFileToCache("stud15-logo" + Options.logoStudVersion +
+                       ".dat", "stud15.dat")
+        addFileToCache("stud20-logo" + Options.logoStudVersion +
+                       ".dat", "stud20.dat")
+        addFileToCache("studa-logo" + Options.logoStudVersion +
+                       ".dat", "studa.dat")
 
     # Load and parse file to create geometry
     filename = os.path.expanduser(filename)
@@ -4926,8 +5583,10 @@ def loadFromFile(context, filename, isFullFilepath=True):
     #  Fix slope material when importing individual parts - See PR https://github.com/TobyLobster/ImportLDraw/pull/50/
     if node.file.isModel:
         # Fix top level rotation from LDraw coordinate space to Blender coordinate space
-        node.file.geometry.points = list(map((lambda p: matvecmul(Math.rotationMatrix, p)), node.file.geometry.points))
-        node.file.geometry.edges = list(map((lambda e: matvecmul(Math.rotationMatrix, e)), node.file.geometry.edges))
+        node.file.geometry.points = list(
+            map((lambda p: matvecmul(Math.rotationMatrix, p)), node.file.geometry.points))
+        node.file.geometry.edges = list(
+            map((lambda e: matvecmul(Math.rotationMatrix, e)), node.file.geometry.edges))
         for childNode in node.file.childNodes:
             childNode.matrix = matmul(Math.rotationMatrix, childNode.matrix)
 
@@ -4956,7 +5615,7 @@ def loadFromFile(context, filename, isFullFilepath=True):
     if not node.file.isModel:
         rootOb.data.transform(Math.rotationMatrix)
 
-    scene  = bpy.context.scene
+    scene = bpy.context.scene
     camera = scene.camera
     render = scene.render
     importedCameraName = ""
@@ -4974,13 +5633,16 @@ def loadFromFile(context, filename, isFullFilepath=True):
         [bm.verts.new(v) for v in globalPoints]
         bm.verts.ensure_lookup_table()
 
-        ret = bmesh.ops.convex_hull(bm, input=bm.verts, use_existing_faces=False)
-        globalPoints = [vert.co.copy() for vert in ret["geom"] if isinstance(vert, bmesh.types.BMVert)]
+        ret = bmesh.ops.convex_hull(
+            bm, input=bm.verts, use_existing_faces=False)
+        globalPoints = [vert.co.copy() for vert in ret["geom"]
+                        if isinstance(vert, bmesh.types.BMVert)]
         del ret
         bm.clear()
         bm.free()
 
-        debugPrint("Number of vertices of convex hull: " + str(len(globalPoints)))
+        debugPrint("Number of vertices of convex hull: " +
+                   str(len(globalPoints)))
 
         # Put convex hull back into scene - for testing purposes
         # mesh_dst = bpy.data.meshes.new(name="convexHull")
@@ -5002,7 +5664,8 @@ def loadFromFile(context, filename, isFullFilepath=True):
         boundingBoxMax[2] = max(p[2] for p in globalPoints)
 
         vcentre = (boundingBoxMin + boundingBoxMax) * 0.5
-        offsetToCentreModel = mathutils.Vector((-vcentre.x, -vcentre.y, -boundingBoxMin.z))
+        offsetToCentreModel = mathutils.Vector(
+            (-vcentre.x, -vcentre.y, -boundingBoxMin.z))
         if Options.positionObjectOnGroundAtOrigin:
             debugPrint("Centre object")
             rootOb.location += offsetToCentreModel
@@ -5015,7 +5678,8 @@ def loadFromFile(context, filename, isFullFilepath=True):
             if len(globalCamerasToAdd):
                 # Capture the first imported camera name
                 importedCameraName = globalCamerasToAdd[0].name
-                debugPrint("Positioning Camera: {0}".format(importedCameraName))
+                debugPrint("Positioning Camera: {0}".format(
+                    importedCameraName))
 
             elif camera is not None:
                 debugPrint("Positioning Camera: {0}".format(camera.data.name))
@@ -5023,7 +5687,8 @@ def loadFromFile(context, filename, isFullFilepath=True):
                 # Set up a default camera position and rotation
                 camera.location = mathutils.Vector((6.5, -6.5, 4.75))
                 camera.rotation_mode = 'XYZ'
-                camera.rotation_euler = mathutils.Euler((1.0471975803375244, 0.0, 0.7853981852531433), 'XYZ')
+                camera.rotation_euler = mathutils.Euler(
+                    (1.0471975803375244, 0.0, 0.7853981852531433), 'XYZ')
 
                 # Must have at least three vertices to move the camera
                 if len(globalPoints) >= 3:
@@ -5032,7 +5697,8 @@ def loadFromFile(context, filename, isFullFilepath=True):
                         iterateCameraPosition(camera, render, vcentre, True)
                     else:
                         for i in range(20):
-                            error = iterateCameraPosition(camera, render, vcentre, True)
+                            error = iterateCameraPosition(
+                                camera, render, vcentre, True)
                             if (error < 0.001):
                                 break
 
@@ -5049,7 +5715,9 @@ def loadFromFile(context, filename, isFullFilepath=True):
         if len(globalLightsToAdd):
             if lightName in sceneObjectNames:
                 light = scene.objects[lightName]
-                lampVector = light.location - mathutils.Vector((4.076245307922363, 1.0054539442062378, 5.903861999511719))
+                lampVector = light.location - \
+                    mathutils.Vector(
+                        (4.076245307922363, 1.0054539442062378, 5.903861999511719))
                 if lampVector.length < 0.001:
                     unlinkFromScene(light)
 
