@@ -1,13 +1,4 @@
-## Why the fork on 12 September 2022
 
-The [original repo from trevorsandy](https://github.com/trevorsandy/blenderldrawrender) is abandoned
-from 18 July 2020. This addons seems promising but it doesnt install on Blender 2.92+ (I'm using 3.2).
-I want to try to use this addon to create Syntethic data for Machine Learning training. It should have everything needed
-but without a single HOW-TO, I need to "reverse engineer" the code and figure it out. Will write the How-to and
-example Blender script once I understand how to actually do it.
-
-<br />
-<br />
 
 # HOW-TO Install on Blender 2.92+ (tested on 3.2)
 
@@ -30,9 +21,20 @@ At this point you can check in menu File->Import and see, you should have as fir
 <s>-Guide on HOW-TO install</s>  
 -Working example on how to script Blender for actually use this addons.
 
+
 <br />
 <br />
 
+## Why the fork on 12 September 2022
+
+The [original repo from trevorsandy](https://github.com/trevorsandy/blenderldrawrender) is abandoned
+from 18 July 2020. This addons seems promising but it doesnt install on Blender 2.92+ (I'm using 3.2).
+I want to try to use this addon to create Syntethic data for Machine Learning training. It should have everything needed
+but without a single HOW-TO, I need to "reverse engineer" the code and figure it out. Will write the How-to and
+example Blender script once I understand how to actually do it.
+
+<br />
+<br />
 
 ### Original ReadME from the original author.
 
