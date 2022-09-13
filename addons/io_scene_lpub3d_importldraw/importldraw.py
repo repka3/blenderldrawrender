@@ -38,6 +38,7 @@ else:
 import configparser
 import sys
 import os
+import logging
 import bpy
 from bpy.props import (StringProperty,
                        FloatProperty,
@@ -46,6 +47,10 @@ from bpy.props import (StringProperty,
                        BoolProperty
                        )
 from bpy_extras.io_utils import ImportHelper
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler())
 
 """
 Default preferences file:
@@ -65,7 +70,7 @@ bevelWidth                    = 0.5
 blendfileTrusted              = False
 cameraBorderPercentage        = 0.5
 curvedWalls                   = True
-defaultColour                 = 4
+defaultColour                 = 10
 flattenHierarchy              = False
 gaps                          = False
 gapsWidth                     = 0.01
@@ -173,6 +178,7 @@ class ImportLDrawOps(bpy.types.Operator, ImportHelper):
     prefs = Preferences("")
 
     # Properties - specified from preferences function
+
     ldrawPath: StringProperty(
         name="",
         description="Full filepath to the LDraw Parts Library (download from http://www.ldraw.org)",
@@ -383,7 +389,7 @@ class ImportLDrawOps(bpy.types.Operator, ImportHelper):
     defaultColour: StringProperty(
         name="Default Colour",
         description="Sets the default part colour",
-        default=prefs.get("defaultColour", "4")
+        default=prefs.get("defaultColour", "10")
     )
 
     useLSynthParts: BoolProperty(
@@ -445,6 +451,7 @@ class ImportLDrawOps(bpy.types.Operator, ImportHelper):
         options={'HIDDEN'}
     )
 
+
     # End Hidden properties
 
     def draw(self, context):
@@ -463,7 +470,7 @@ class ImportLDrawOps(bpy.types.Operator, ImportHelper):
         box.prop(self, "addEnvironment")
         box.prop(self, "positionCamera")
         box.prop(self, "cameraBorderPercentage")
-
+        box.prop(self,"defaultColour")
         box.prop(self, "importCameras")
         box.prop(self, "importLights")
 
@@ -583,6 +590,7 @@ class ImportLDrawOps(bpy.types.Operator, ImportHelper):
             ImportLDrawOps.prefs.set("smoothShading",          self.smoothParts)
             ImportLDrawOps.prefs.set("studLogoDirectory",      self.studLogoPath)
             ImportLDrawOps.prefs.set("useColourScheme",        self.colourScheme)
+            ImportLDrawOps.prefs.set("defaultColour",          self.defaultColour)
             ImportLDrawOps.prefs.set("useLogoStuds",           self.useLogoStuds)
             ImportLDrawOps.prefs.set("useLook",                self.look)
             ImportLDrawOps.prefs.set("useUnofficialParts",     self.useUnofficialParts)
@@ -652,6 +660,7 @@ class ImportLDrawOps(bpy.types.Operator, ImportHelper):
         if self.filepath:
             self.modelFile                            = self.filepath
 
+        logger.debug("[importldraw.py] About to loadldraw.loadFromFile(self, self.modelFile). loadldraw.Options.defaultColour: {} self.defaultColour:".format(loadldraw.Options.defaultColour, self.defaultColour))
         loadldraw.loadFromFile(self, self.modelFile)
 
         return {"FINISHED"}

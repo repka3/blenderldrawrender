@@ -1,0 +1,16 @@
+import bpy
+
+print("Setting GPU for rendering...")
+bpy.context.scene.cycles.device = 'GPU'
+
+print("Creating new blank scene...")
+#bpy.ops.wm.read_factory_settings(use_empty=True)
+
+ldrawpart_full_directory="C:\\Users\\Alessio\\Documents\\ProgettieLavoro\\lavoro_personale\\legoNew\\ldraw\\parts\\3626bph3.dat"
+ldraw_full_directory="C:\\Users\\Alessio\\Documents\\ProgettieLavoro\\lavoro_personale\\legoNew\\ldraw\\"
+
+
+#bpy.ops.import_scene.lpub3dimportldraw(filepath=ldrawpart_full_directory, ldrawPath=ldraw_full_directory, modelFile=ldrawpart_full_directory)
+
+
+from io_scene_lpub3d_importldraw import loadldraw.loadldraw

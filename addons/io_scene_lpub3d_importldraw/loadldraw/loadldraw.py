@@ -35,6 +35,11 @@ import math
 import sys
 import os
 from typing import Dict, Any
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler())
 
 """
 LPub3D Import LDraw
@@ -282,7 +287,7 @@ class Options:
     # Additionally searches <ldraw-dir>/unofficial/parts and /p for files
     useUnofficialParts = True
     resolution = "Standard"     # Choose from "High", "Standard", or "Low"
-    defaultColour = "4"            # Default colour ("4" = red)
+    defaultColour = "10"            # Default colour ("10" = yellow)
     # Multiple bricks share geometry (recommended)
     createInstances = True
     # "ldraw", "alt", or "lgeo". LGEO gives the most true-to-life colours.
@@ -1123,6 +1128,7 @@ class LegoColours:
             # I've extracted the following colours from the LGEO file: lg_color.inc
             # LGEO is downloadable from http://ldraw.org/downloads-2/downloads.html
             # We overwrite the standard LDraw colours if we have better LGEO colours.
+            #logger.info("[loadldraw] using LGEO colour scheme")
             if globalLgeoColours:
                 debugPrint("Loading lgeo colours from parameter list.")
                 for code, colour in globalLgeoColours.items():
@@ -1832,14 +1838,15 @@ class LDrawGeometry:
 class LDrawNode:
     """A node in the hierarchy. References one LDrawFile"""
 
-    def __init__(self, filename, isFullFilepath, parentFilepath, colourName=Options.defaultColour,
+    def __init__(self, filename, isFullFilepath, parentFilepath, colourName=None,
                  matrix=Math.identityMatrix, bfcCull=True, bfcInverted=False, isLSynthPart=False, isSubPart=False,
                  isRootNode=True, groupNames=[]):
         self.filename = filename
         self.isFullFilepath = isFullFilepath
         self.parentFilepath = parentFilepath
         self.matrix = matrix
-        self.colourName = colourName
+        self.colourName = colourName if colourName is not None else Options.defaultColour
+
         self.bfcInverted = bfcInverted
         self.bfcCull = bfcCull
         self.file = None
@@ -1934,7 +1941,8 @@ class LDrawNode:
             child.load()
 
     def resolveColour(colourName, realColourName):
-        if colourName == "16":
+        #logger.info("[loadldraw] resolveColour() colourName = " + colourName + ", realColourName = " + realColourName)
+        if colourName == "16": #neutral ldraw color like grey
             return realColourName
         return colourName
 
@@ -4737,7 +4745,7 @@ def smoothShadingAndFreestyleEdges(ob):
 def createBlenderObjectsFromNode(node,
                                  localMatrix,
                                  name,
-                                 realColourName=Options.defaultColour,
+                                 realColourName=None,
                                  blenderParentTransform=Math.identityMatrix,
                                  localToWorldSpaceMatrix=Math.identityMatrix,
                                  blenderNodeParent=None):
@@ -4745,7 +4753,8 @@ def createBlenderObjectsFromNode(node,
     Creates a Blender Object for the node given and (recursively) for all it's children as required.
     Creates and optimises the mesh for each object too.
     """
-
+    realColourName = realColourName if realColourName is not None else Options.defaultColour
+    #logger.info("[loadldraw] createBlenderObjectsFromNode() realColourName: %s", realColourName)
     global globalBrickCount
     global globalObjectsToAdd
     global globalWeldDistance
@@ -4756,6 +4765,7 @@ def createBlenderObjectsFromNode(node,
     if node.isBlenderObjectNode():
         ourColourName = LDrawNode.resolveColour(
             node.colourName, realColourName)
+        #logger.info("[loadldraw] createBlenderObjectsFromNode() ourColourName: %s", ourColourName)
         meshName, geometry = node.getBlenderGeometry(ourColourName, name)
         mesh, newMeshCreated = createMesh(name, meshName, geometry)
 
@@ -5505,6 +5515,8 @@ def iterateCameraPosition(camera, render, vcentre3d, moveCamera):
 
 # **************************************************************************************
 def loadFromFile(context, filename, isFullFilepath=True):
+    logger.info("[loadldraw] loadFromFile filename: " + filename)
+    #logger.info("[loadldraw] defaultColour: " + str(Options.defaultColour))
     startTime = time.time()
 
     global ldrawModelFile
