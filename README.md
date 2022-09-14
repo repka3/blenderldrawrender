@@ -1,4 +1,7 @@
 
+Output folder example
+
+<img src="https://github.com/repka3/blenderldrawrender/blob/master/blender_scripts/example_output.png" title="output example" alt="screenshot example">
 
 # HOW-TO Install on Blender 2.92+ (tested on 3.2)
 
