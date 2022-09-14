@@ -1,7 +1,24 @@
+# Moving forward
 
-Output folder example
+This will be the last release I will make with this code. Although this code was useful to understand the ldraw import and it's completly working (now), I dont like this addon code structure and I find the render part useless. Not only that, but since it has a "crop" utility, this makes the addon "difficult to install", since it needs to install pip dependencies. Plus you need to post-process the output images for ML, for creating variation in rotation and maybe convert to greyscale. So moving forward I will make my own "utility" that not only has a Blender add-on but also everything you need to post process.
+
+# HOW-TO to use the scripts
+I think the main script is quite self-explanatory but I will write the steps I used to generate the output example here
 
 <img src="https://github.com/repka3/blenderldrawrender/blob/master/blender_scripts/example_output.png" title="output example" alt="screenshot example">
+
+1. Install the plugin in Blender (instructions below) and make sure you have CUDA installed and enable GPU rendering in Blender.
+2. Open Blender and Go to File -> Import - >Import and import an LDRAW part also check your preferences in the plugin import window. Doesnt' matter which part you import, just one. (this sets all options for the importer, without having to create all the Options via script.)
+3. Now open the script (in Blender) called check_camera_pos.py . Generate as many camera position/rotation as you like. Create the list of CameraPos following the example. And check one by one with adjustCamera(camera_props[0]), adjustCamera(camera_props[1]) and so on, just run the script and check.. Just to make sure every render has a camera position exactly how you like it. Finally copy the list from the editor.
+
+<img src="https://github.com/repka3/blenderldrawrender/blob/master/blender_scripts/adjusting_camera.png" title="ajusting camera example" alt="screenshot ajusting camera example">
+
+1. Open the script called first_script_testing_addon.py and paste the list of camera positions, replacing the one in the example. Set all the directories path needed in the script. Adjust the plane positions if you want. Adjust the light positions and intensity if you want.
+2. I suggest to open the Blender output console window Window->Toggle system console because during the rendering Blender will "freeze", at least you will read whats going on.
+
+3. Just run the script for the lego part you want. In the example script here , it will generate 208 images 200x200. This is just an example.
+
+
 
 # HOW-TO Install on Blender 2.92+ (tested on 3.2)
 
