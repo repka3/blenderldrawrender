@@ -1,0 +1,2 @@
+filename = "C:\\Users\\Alessio\\Documents\\ProgettieLavoro\\lavoro_personale\\legoNew\\blenderldrawrender\\blender_scripts\\first_script_testing_addon.py"
+exec(compile(open(filename).read(), filename, 'exec'))
