@@ -39,7 +39,7 @@ At this point you can check in menu File->Import and see, you should have as fir
 ## TODO:
 
 <s>-Guide on HOW-TO install</s>  
--Working example on how to script Blender for actually use this addons.
+<s>-Working example on how to script Blender for actually use this addons.</s>  
 
 
 <br />
